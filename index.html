@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trener Epok Literackich - Matura Podstawowa</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --success: #10b981;
+            --error: #ef4444;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            margin: 0;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 650px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            margin: 0 0 8px 0;
+            color: #1e293b;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            margin: 0;
+            font-size: 0.95rem;
+        }
+
+        /* Auth card */
+        .auth-card {
+            max-width: 400px;
+            margin: 40px auto 0;
+        }
+
+        .auth-title-text {
+            margin: 0 0 4px 0;
+            font-size: 1.4rem;
+        }
+
+        .auth-subtitle {
+            margin: 0 0 20px 0;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .auth-label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin: 12px 0 4px;
+        }
+
+        .auth-input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-family: inherit;
+        }
+
+        .auth-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .auth-submit {
+            width: 100%;
+            margin-top: 18px;
+            padding: 12px;
+        }
+
+        .auth-msg {
+            margin-top: 12px;
+            font-size: 0.85rem;
+            color: var(--error);
+            min-height: 1em;
+            line-height: 1.4;
+        }
+
+        .auth-msg.ok {
+            color: var(--success);
+        }
+
+        .auth-switch {
+            text-align: center;
+            margin-top: 14px;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .auth-switch a {
+            color: var(--primary);
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .auth-switch a:hover {
+            text-decoration: underline;
+        }
+
+        /* Logged-in bar */
+        .authed-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .authed-user {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .sync-status {
+            font-size: 0.8rem;
+            min-height: 1em;
+        }
+
+        .sync-status.ok {
+            color: var(--success);
+        }
+
+        .sync-status.err {
+            color: var(--error);
+        }
+
+        /* Progress Bar */
+        .progress-box {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .progress-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .progress-bar-bg {
+            background-color: var(--border);
+            border-radius: 6px;
+            height: 12px;
+            overflow: hidden;
+            width: 100%;
+        }
+
+        .progress-bar-fill {
+            background-color: var(--success);
+            height: 100%;
+            width: 0%;
+            transition: width 0.4s ease;
+        }
+
+        /* Quiz Card */
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.02);
+            position: relative;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .card-label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            font-weight: 700;
+        }
+
+        .learned-status {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: 2px solid var(--border);
+            display: inline-block;
+        }
+
+        .dot.active {
+            background-color: var(--success);
+            border-color: var(--success);
+        }
+
+        .book-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0 0 6px 0;
+            color: #0f172a;
+        }
+
+        .book-author {
+            font-size: 1.1rem;
+            font-style: italic;
+            color: var(--text-muted);
+            margin: 0 0 24px 0;
+        }
+
+        /* Epoch buttons */
+        .epochs-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        @media (min-width: 480px) {
+            .epochs-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        .epoch-btn {
+            background-color: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: var(--text-main);
+        }
+
+        .epoch-btn:hover:not(:disabled) {
+            background-color: #f1f5f9;
+            border-color: #cbd5e1;
+            transform: translateY(-1px);
+        }
+
+        .epoch-btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.8;
+        }
+
+        /* Verification colors */
+        .epoch-btn.correct-choice {
+            background-color: var(--success) !important;
+            color: white !important;
+            border-color: var(--success) !important;
+        }
+
+        .epoch-btn.incorrect-choice {
+            background-color: var(--error) !important;
+            color: white !important;
+            border-color: var(--error) !important;
+        }
+
+        /* Feedback Area */
+        .feedback {
+            margin-top: 20px;
+            padding: 16px;
+            border-radius: 12px;
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .feedback.is-correct {
+            background-color: #ecfdf5;
+            border: 1px solid #a7f3d0;
+            color: #065f46;
+        }
+
+        .feedback.is-incorrect {
+            background-color: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #991b1b;
+        }
+
+        .feedback-title {
+            font-weight: 700;
+            font-size: 1.05rem;
+            margin: 0 0 4px 0;
+        }
+
+        .feedback-text {
+            margin: 0 0 14px 0;
+            font-size: 0.95rem;
+            line-height: 1.4;
+        }
+
+        .action-btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .action-btn:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .action-btn:disabled {
+            background-color: var(--border);
+            cursor: not-allowed;
+        }
+
+        /* Finish Screen */
+        .finish-screen {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .finish-title {
+            font-size: 2rem;
+            color: var(--success);
+            margin: 0 0 12px 0;
+        }
+
+        /* Utilities */
+        .hidden {
+            display: none !important;
+        }
+
+        /* Accordion for all books */
+        .list-section {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+        }
+
+        .toggle-list-btn {
+            background: none;
+            border: none;
+            color: var(--primary);
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            width: 100%;
+            text-align: center;
+            padding: 8px;
+        }
+
+        .toggle-list-btn:hover {
+            text-decoration: underline;
+        }
+
+        .full-list {
+            margin-top: 16px;
+            border-top: 1px solid var(--border);
+            padding-top: 16px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .epoch-group {
+            margin-bottom: 20px;
+        }
+
+        .epoch-group-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #334155;
+            margin: 0 0 8px 0;
+            border-bottom: 1px dashed var(--border);
+            padding-bottom: 4px;
+        }
+
+        .list-item {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            margin-bottom: 6px;
+            padding: 4px 0;
+        }
+
+        .list-item-text {
+            max-width: 80%;
+        }
+
+        .status-badge {
+            font-size: 0.8rem;
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .badge-none { background: #f1f5f9; color: #64748b; }
+        .badge-half { background: #fef3c7; color: #d97706; }
+        .badge-done { background: #d1fae5; color: #059669; }
+
+        .control-btns {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 10px;
+        }
+
+        .reset-btn {
+            background: none;
+            border: none;
+            color: var(--error);
+            font-size: 0.8rem;
+            cursor: pointer;
+            padding: 5px;
+        }
+        .reset-btn:hover {
+            text-decoration: underline;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <!-- Login / Registration Card -->
+    <div id="auth-card" class="card auth-card">
+        <h2 id="auth-title-text" class="auth-title-text">Logowanie</h2>
+        <p class="auth-subtitle">Zaloguj się lub załóż konto, aby zapisywać postęp swojej nauki</p>
+        <form id="auth-form">
+            <label class="auth-label" for="auth-email">E-mail</label>
+            <input class="auth-input" type="email" id="auth-email" required autocomplete="email">
+
+            <label class="auth-label" for="auth-password">Hasło</label>
+            <input class="auth-input" type="password" id="auth-password" required minlength="6" autocomplete="current-password">
+
+            <div id="auth-msg" class="auth-msg"></div>
+
+            <button id="auth-submit" class="action-btn auth-submit" type="submit">Zaloguj się</button>
+        </form>
+        <p class="auth-switch">
+            Nie masz konta? <a id="auth-toggle-link" onclick="toggleAuthMode()">Załóż konto</a>
+        </p>
+    </div>
+
+    <!-- Main App -->
+    <div id="app-container" class="hidden">
+
+        <div class="authed-bar">
+            <span id="user-email" class="authed-user"></span>
+            <span id="sync-status" class="sync-status"></span>
+            <button class="reset-btn" onclick="logout()">Wyloguj się</button>
+        </div>
+
+        <header>
+            <h1>Trener Epok Literackich</h1>
+            <p class="subtitle">Wymagane lektury – Matura Podstawowa (szkoła ponadpodstawowa oraz wybrane z podstawowej)</p>
+        </header>
+
+        <!-- Progress Indicator -->
+        <div class="progress-box">
+            <div class="progress-info">
+                <span>Twój ogólny postęp</span>
+                <span id="progress-text">Opanowano: 0 / 0 (0%)</span>
+            </div>
+            <div class="progress-bar-bg">
+                <div id="progress-bar" class="progress-bar-fill"></div>
+            </div>
+        </div>
+
+        <!-- Main Card -->
+        <div id="quiz-card" class="card">
+            <div class="card-header">
+                <span class="card-label">Przypisz epokę</span>
+                <div class="learned-status" title="Musisz zaznaczyć poprawnie 2 razy z rzędu">
+                    <span class="card-label">Postęp lektury:</span>
+                    <span id="dot-1" class="dot"></span>
+                    <span id="dot-2" class="dot"></span>
+                </div>
+            </div>
+
+            <h2 id="book-title" class="book-title">Ładowanie...</h2>
+            <p id="book-author" class="book-author">Ładowanie...</p>
+
+            <div class="epochs-grid" id="epochs-buttons">
+                <!-- Buttons dynamically generated -->
+            </div>
+
+            <!-- Feedback Area -->
+            <div id="feedback-area" class="feedback">
+                <h3 id="feedback-title" class="feedback-title"></h3>
+                <p id="feedback-text" class="feedback-text"></p>
+                <button id="next-btn" class="action-btn" onclick="handleNext()">Dalej</button>
+            </div>
+        </div>
+
+        <!-- Finish Screen (Initially Hidden) -->
+        <div id="finish-card" class="card finish-screen hidden">
+            <h2 class="finish-title">Gratulacje!</h2>
+            <p>Opanowałeś wszystkie wymagane lektury na maturę podstawową!</p>
+            <button class="action-btn" style="margin-top: 15px;" onclick="resetProgress()">Rozpocznij naukę od nowa</button>
+        </div>
+
+        <!-- List of All Books -->
+        <div class="list-section">
+            <button id="toggle-list-btn" class="toggle-list-btn" onclick="toggleList()">Pokaż spis wszystkich lektur i postęp</button>
+            <div id="full-list-container" class="full-list hidden">
+                <!-- Populate via JS -->
+            </div>
+        </div>
+
+        <div class="control-btns">
+            <button class="reset-btn" onclick="confirmReset()">Wyczyść całą naukę i resetuj postęp</button>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    // Baza lektur CKE poziom podstawowy (ponadpodstawowa + wybrane lektury z podstawówki wymagane na egzaminie)
+    const defaultBooks = [
+        // Starożytność (Antyk)
+        { title: "Biblia (Księga Rodzaju, Hioba, Koheleta, Pieśń nad Pieśniami, Psalmy, Apokalipsa)", author: "Różni autorzy", epoch: "Starożytność" },
+        { title: "Mitologia (część I: Grecja)", author: "Jan Parandowski", epoch: "Starożytność" },
+        { title: "Iliada (fragmenty)", author: "Homer", epoch: "Starożytność" },
+        { title: "Antygona", author: "Sofokles", epoch: "Starożytność" },
+        // Średniowiecze
+        { title: "Lament świętokrzyski (fragmenty)", author: "Autor nieznany", epoch: "Średniowiecze" },
+        { title: "Rozmowa Mistrza Polikarpa ze Śmiercią (fragmenty)", author: "Autor nieznany", epoch: "Średniowiecze" },
+        { title: "Pieśń o Rolandzie (fragmenty)", author: "Autor nieznany", epoch: "Średniowiecze" },
+        { title: "Bogurodzica", author: "Autor nieznany", epoch: "Średniowiecze" },
+        // Renesans
+        { title: "Pieśni (w tym Pieśń IX ks. I, Pieśń V ks. II)", author: "Jan Kochanowski", epoch: "Renesans" },
+        { title: "Treny (tren IX, X, XI)", author: "Jan Kochanowski", epoch: "Renesans" },
+        { title: "Odprawa posłów greckich", author: "Jan Kochanowski", epoch: "Renesans" },
+        { title: "Kazania sejmowe (fragmenty)", author: "Piotr Skarga", epoch: "Renesans" },
+        { title: "Makbet", author: "William Szekspir", epoch: "Renesans" },
+        // Barok
+        { title: "Skąpiec", author: "Molier", epoch: "Barok" },
+        { title: "Pamiętniki (fragmenty)", author: "Jan Chryzostom Pasek", epoch: "Barok" },
+        { title: "Wybrane wiersze", author: "Jan Andrzej Morsztyn / Daniel Naborowski", epoch: "Barok" },
+        // Oświecenie
+        { title: "Hymn do miłości ojczyzny", author: "Ignacy Krasicki", epoch: "Oświecenie" },
+        { title: "Wybrana satyra (np. Żona modna)", author: "Ignacy Krasicki", epoch: "Oświecenie" },
+        { title: "Bajki", author: "Ignacy Krasicki", epoch: "Oświecenie" },
+        // Romantyzm
+        { title: "Oda do młodości", author: "Adam Mickiewicz", epoch: "Romantyzm" },
+        { title: "Wybrane ballady (w tym Romantyczność)", author: "Adam Mickiewicz", epoch: "Romantyzm" },
+        { title: "Sonety krymskie (wybrane)", author: "Adam Mickiewicz", epoch: "Romantyzm" },
+        { title: "Konrad Wallenrod", author: "Adam Mickiewicz", epoch: "Romantyzm" },
+        { title: "Dziady cz. III", author: "Adam Mickiewicz", epoch: "Romantyzm" },
+        { title: "Kordian", author: "Juliusz Słowacki", epoch: "Romantyzm" },
+        { title: "Nie-Boska komedia", author: "Zygmunt Krasiński", epoch: "Romantyzm" },
+        { title: "Zemsta", author: "Aleksander Fredro", epoch: "Romantyzm" },
+        { title: "Balladyna", author: "Juliusz Słowacki", epoch: "Romantyzm" },
+        { title: "Dziady cz. II", author: "Adam Mickiewicz", epoch: "Romantyzm" },
+        { title: "Pan Tadeusz", author: "Adam Mickiewicz", epoch: "Romantyzm" },
+        // Pozytywizm
+        { title: "Lalka", author: "Bolesław Prus", epoch: "Pozytywizm" },
+        { title: "Potop (fragmenty)", author: "Henryk Sienkiewicz", epoch: "Pozytywizm" },
+        { title: "Gloria victis", author: "Eliza Orzeszkowa", epoch: "Pozytywizm" },
+        { title: "Zbrodnia i kara", author: "Fiodor Dostojewski", epoch: "Pozytywizm" },
+        // Młoda Polska
+        { title: "Wesele", author: "Stanisław Wyspiański", epoch: "Młoda Polska" },
+        { title: "Chłopi (tom I - Jesień, fragmenty)", author: "Władysław Stanisław Reymont", epoch: "Młoda Polska" },
+        // Dwudziestolecie międzywojenne
+        { title: "Przedwiośnie", author: "Stefan Żeromski", epoch: "Dwudziestolecie międzywojenne" },
+        { title: "Ferdydurke (fragmenty)", author: "Witold Gombrowicz", epoch: "Dwudziestolecie międzywojenne" },
+        // Współczesność
+        { title: "Proszę państwa do gazu", author: "Tadeusz Borowski", epoch: "Współczesność" },
+        { title: "Inny świat (fragmenty)", author: "Gustaw Herling-Grudziński", epoch: "Współczesność" },
+        { title: "Zdążyć przed Panem Bogiem", author: "Hanna Krall", epoch: "Współczesność" },
+        { title: "Dżuma", author: "Albert Camus", epoch: "Współczesność" },
+        { title: "Rok 1984", author: "George Orwell", epoch: "Współczesność" },
+        { title: "Tango", author: "Sławomir Mrożek", epoch: "Współczesność" },
+        { title: "Górą „Edek”", author: "Marek Nowakowski", epoch: "Współczesność" },
+        { title: "Miejsce", author: "Andrzej Stasiuk", epoch: "Współczesność" },
+        { title: "Profesor Andrews w Warszawie", author: "Olga Tokarczuk", epoch: "Współczesność" },
+        { title: "Podróże z Herodotem (fragmenty)", author: "Ryszard Kapuściński", epoch: "Współczesność" }
+    ];
+
+    const epochs = [
+        "Starożytność",
+        "Średniowiecze",
+        "Renesans",
+        "Barok",
+        "Oświecenie",
+        "Romantyzm",
+        "Pozytywizm",
+        "Młoda Polska",
+        "Dwudziestolecie międzywojenne",
+        "Współczesność"
+    ];
+
+    let state = {
+        books: [],
+        queue: [],
+        currentId: null
+    };
+
+    const STORAGE_KEY = 'matura_trainer_state_v1';
+
+    let supabase = null;
+    let userId = null;
+    let entered = false;
+    let saveTimer = null;
+    let authMode = 'login';
+
+    // Initialize application
+    window.onload = function() {
+        if (!initSupabase()) {
+            showAuth();
+            setAuthMsg('Brak konfiguracji bazy danych. Uzupełnij plik config.js (patrz instrukcja).');
+            return;
+        }
+        renderEpochButtons();
+
+        supabase.auth.onAuthStateChange(function(event, session) {
+            if (session) {
+                enterApp(session.user);
+            } else {
+                leaveApp();
+            }
+        });
+
+        supabase.auth.getSession().then(function(result) {
+            if (result.data.session) {
+                enterApp(result.data.session.user);
+            } else {
+                showAuth();
+            }
+        });
+    };
+
+    function initSupabase() {
+        if (typeof SUPABASE_URL !== 'undefined' && typeof SUPABASE_ANON_KEY !== 'undefined' &&
+            SUPABASE_URL && SUPABASE_ANON_KEY && SUPABASE_URL.indexOf('TWOJ-PROJEKT') === -1) {
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            return true;
+        }
+        return false;
+    }
+
+    function showAuth() {
+        document.getElementById('auth-card').classList.remove('hidden');
+        document.getElementById('app-container').classList.add('hidden');
+    }
+
+    function enterApp(user) {
+        if (entered) return;
+        entered = true;
+        userId = user.id;
+        document.getElementById('user-email').innerText = 'Zalogowano: ' + (user.email || '');
+        document.getElementById('sync-status').innerText = '';
+        document.getElementById('auth-card').classList.add('hidden');
+        document.getElementById('app-container').classList.remove('hidden');
+        document.getElementById('quiz-card').classList.remove('hidden');
+        document.getElementById('finish-card').classList.add('hidden');
+        document.getElementById('feedback-area').style.display = 'none';
+        loadProgress().then(nextQuestion);
+    }
+
+    function leaveApp() {
+        entered = false;
+        userId = null;
+        setSyncStatus('', false);
+        showAuth();
+    }
+
+    function toggleAuthMode() {
+        if (!supabase) return;
+        authMode = authMode === 'login' ? 'register' : 'login';
+        const isLogin = authMode === 'login';
+        document.getElementById('auth-title-text').innerText = isLogin ? 'Logowanie' : 'Rejestracja';
+        document.getElementById('auth-submit').innerText = isLogin ? 'Zaloguj się' : 'Załóż konto';
+        document.getElementById('auth-toggle-link').innerText = isLogin ? 'Załóż konto' : 'Masz już konto? Zaloguj się';
+        document.getElementById('auth-password').autocomplete = isLogin ? 'current-password' : 'new-password';
+        setAuthMsg('');
+    }
+
+    function setAuthMsg(text, ok) {
+        const el = document.getElementById('auth-msg');
+        el.innerText = text || '';
+        el.className = 'auth-msg' + (ok ? ' ok' : '');
+    }
+
+    function setSyncStatus(text, ok) {
+        const el = document.getElementById('sync-status');
+        if (!el) return;
+        el.innerText = text || '';
+        el.className = 'sync-status' + (ok ? ' ok' : text ? ' err' : '');
+    }
+
+    document.getElementById('auth-form').addEventListener('submit', submitAuth);
+
+    async function submitAuth(e) {
+        e.preventDefault();
+        if (!supabase) return;
+        const email = document.getElementById('auth-email').value.trim();
+        const password = document.getElementById('auth-password').value;
+        setAuthMsg('');
+        document.getElementById('auth-submit').disabled = true;
+
+        if (authMode === 'login') {
+            const { data, error } = await supabase.auth.signInWithPassword({ email: email, password: password });
+            if (error) {
+                setAuthMsg(error.message);
+                document.getElementById('auth-submit').disabled = false;
+            }
+            document.getElementById('auth-form').reset();
+        } else {
+            const { data, error } = await supabase.auth.signUp({ email: email, password: password });
+            document.getElementById('auth-submit').disabled = false;
+            if (error) {
+                setAuthMsg(error.message);
+            } else if (data.session) {
+                setAuthMsg('Konto założone! Zalogowano automatycznie.', true);
+            } else {
+                setAuthMsg('Konto założone! Sprawdź skrzynkę e-mail i kliknij link potwierdzający. ' +
+                    '(Szybsza opcja: wyłącz potwierdzenie e-maila w Supabase – patrz instrukcja.)');
+            }
+            document.getElementById('auth-form').reset();
+        }
+    }
+
+    async function logout() {
+        if (supabase) {
+            await supabase.auth.signOut();
+        }
+    }
+
+    // ---------- Zapisywanie do bazy ----------
+
+    function loadProgress() {
+        const key = userId ? STORAGE_KEY + '_' + userId : STORAGE_KEY;
+        const saved = localStorage.getItem(key);
+        if (saved) {
+            try {
+                state = JSON.parse(saved);
+                if (!state.books || state.books.length !== defaultBooks.length) {
+                    resetProgress();
+                }
+            } catch (e) {
+                resetProgress();
+            }
+        } else {
+            resetProgress();
+        }
+
+        if (supabase && userId) {
+            return supabase
+                .from('user_progress')
+                .select('state')
+                .eq('user_id', userId)
+                .maybeSingle()
+                .then(function(result) {
+                    if (result.data && result.data.state) {
+                        state = result.data.state;
+                        if (!state.books || state.books.length !== defaultBooks.length) {
+                            resetProgress();
+                        }
+                    }
+                    saveNow();
+                    updateProgressBar();
+                    if (!document.getElementById('full-list-container').classList.contains('hidden')) {
+                        renderFullList();
+                    }
+                });
+        }
+        return Promise.resolve();
+    }
+
+    function saveProgress() {
+        const key = userId ? STORAGE_KEY + '_' + userId : STORAGE_KEY;
+        localStorage.setItem(key, JSON.stringify(state));
+        if (supabase && userId) {
+            clearTimeout(saveTimer);
+            saveTimer = setTimeout(saveNow, 400);
+        }
+        updateProgressBar();
+    }
+
+    function saveNow() {
+        if (!supabase || !userId) return;
+        return supabase
+            .from('user_progress')
+            .upsert(
+                { user_id: userId, state: state, updated_at: new Date().toISOString() },
+                { onConflict: 'user_id' }
+            )
+            .then(function(result) {
+                if (result.error) {
+                    setSyncStatus('Błąd zapisu danych', false);
+                    console.error('Zapis do bazy nie powiódł się:', result.error.message);
+                } else {
+                    setSyncStatus('Zapisano', true);
+                }
+            });
+    }
+
+    function resetProgress() {
+        state.books = defaultBooks.map(function(b, index) {
+            return {
+                id: index,
+                title: b.title,
+                author: b.author,
+                epoch: b.epoch,
+                score: 0 // Liczba poprawnych odpowiedzi z rzędu (0, 1 lub 2)
+            };
+        });
+        // Generowanie przetasowanej kolejki
+        state.queue = state.books.map(function(b) { return b.id; });
+        shuffle(state.queue);
+        state.currentId = null;
+        saveProgress();
+    }
+
+    function confirmReset() {
+        if (confirm("Czy na pewno chcesz usunąć cały swój postęp i zacząć naukę od nowa?")) {
+            resetProgress();
+            document.getElementById('finish-card').classList.add('hidden');
+            document.getElementById('quiz-card').classList.remove('hidden');
+            nextQuestion();
+        }
+    }
+
+    // Algorytm Fisher-Yates shuffle
+    function shuffle(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+    }
+
+    function renderEpochButtons() {
+        const container = document.getElementById('epochs-buttons');
+        container.innerHTML = '';
+        epochs.forEach(function(epoch) {
+            const btn = document.createElement('button');
+            btn.className = 'epoch-btn';
+            btn.innerText = epoch;
+            btn.onclick = function() { submitAnswer(epoch, btn); };
+            container.appendChild(btn);
+        });
+    }
+
+    function updateProgressBar() {
+        const total = state.books.length;
+        const learned = state.books.filter(function(b) { return b.score >= 2; }).length;
+        const percentage = total > 0 ? Math.round((learned / total) * 100) : 0;
+
+        document.getElementById('progress-text').innerText = 'Opanowano: ' + learned + ' z ' + total + ' lektur (' + percentage + '%)';
+        document.getElementById('progress-bar').style.width = percentage + '%';
+
+        // Odśwież listę, jeśli jest otwarta
+        if (!document.getElementById('full-list-container').classList.contains('hidden')) {
+            renderFullList();
+        }
+    }
+
+    function nextQuestion() {
+        // Schowaj panel feedbacku
+        document.getElementById('feedback-area').style.display = 'none';
+
+        // Jeśli zresetowano postęp w trakcie wyświetlania pytania
+        if (state.currentId !== null && state.books[state.currentId].score >= 2) {
+            state.currentId = null;
+        }
+
+        // Pobierz następny element z kolejki, jeśli nie mamy aktywnego pytania
+        if (state.currentId === null) {
+            if (state.queue.length === 0) {
+                showFinishScreen();
+                return;
+            }
+            state.currentId = state.queue.shift();
+            saveProgress();
+        }
+
+        const book = state.books.find(function(b) { return b.id === state.currentId; });
+
+        // Wyświetl dane
+        document.getElementById('book-title').innerText = book.title;
+        document.getElementById('book-author').innerText = book.author;
+
+        // Zaktualizuj kropki postępu lektury
+        document.getElementById('dot-1').className = 'dot' + (book.score >= 1 ? ' active' : '');
+        document.getElementById('dot-2').className = 'dot' + (book.score >= 2 ? ' active' : '');
+
+        // Odblokuj i zresetuj przyciski epok
+        document.querySelectorAll('.epoch-btn').forEach(function(btn) {
+            btn.disabled = false;
+            btn.className = 'epoch-btn';
+        });
+    }
+
+    function submitAnswer(selectedEpoch, clickedButton) {
+        const book = state.books.find(function(b) { return b.id === state.currentId; });
+        const isCorrect = book.epoch === selectedEpoch;
+
+        // Zablokuj przyciski
+        document.querySelectorAll('.epoch-btn').forEach(function(btn) {
+            btn.disabled = true;
+            if (btn.innerText === book.epoch) {
+                btn.classList.add('correct-choice');
+            }
+        });
+
+        if (!isCorrect) {
+            clickedButton.classList.add('incorrect-choice');
+        }
+
+        const feedbackArea = document.getElementById('feedback-area');
+        const feedbackTitle = document.getElementById('feedback-title');
+        const feedbackText = document.getElementById('feedback-text');
+
+        feedbackArea.style.display = 'block';
+
+        if (isCorrect) {
+            book.score++;
+            feedbackArea.className = 'feedback is-correct';
+            feedbackTitle.innerText = "Dobrze!";
+
+            if (book.score >= 2) {
+                feedbackText.innerText = 'Prawidłowa odpowiedź. "' + book.title + '" to ' + book.epoch + '. Książka opanowana (zrobiłeś ją dobrze dwa razy) – usunięto ją z aktywnej kolejki!';
+                state.currentId = null; // Nie wraca do kolejki
+            } else {
+                feedbackText.innerText = 'Poprawnie! To Twoja pierwsza poprawna odpowiedź z rzędu dla tej książki. Potrzebujesz jeszcze jednej, by uznać ją za opanowaną.';
+                // Przesuń z powrotem do kolejki za jakiś czas
+                insertBackIntoQueue(book.id, true);
+                state.currentId = null;
+            }
+        } else {
+            book.score = 0; // Reset postępu do zera
+            feedbackArea.className = 'feedback is-incorrect';
+            feedbackTitle.innerText = "Źle!";
+            feedbackText.innerHTML = 'Niestety. "' + book.title + '" (autor: ' + book.author + ') reprezentuje epokę: <strong>' + book.epoch + '</strong>.<br>Licznik postępu tej lektury został zresetowany. Książka powróci do Ciebie za jakiś czas.';
+
+            // Wsuń z powrotem do kolejki dosyć szybko, ale nie natychmiast
+            insertBackIntoQueue(book.id, false);
+            state.currentId = null;
+        }
+
+        saveProgress();
+    }
+
+    // Inteligentny powrót lektury do kolejki
+    function insertBackIntoQueue(id, isCorrect) {
+        if (state.queue.length === 0) {
+            state.queue.push(id);
+            return;
+        }
+
+        // Ustalamy minimalny dystans przed ponownym pokazaniem się lektury
+        // Jeśli odpowiedź była błędna, wraca szybciej (np. po min. 3 innych pytaniach).
+        // Jeśli była poprawna, wraca później (np. po min. 6 innych pytaniach).
+        let minGap = isCorrect ? 6 : 3;
+        let targetIndex;
+
+        if (state.queue.length <= minGap) {
+            // Jeśli w kolejce jest mało elementów, wstaw na sam koniec
+            targetIndex = state.queue.length;
+        } else {
+            // Wstaw w losowe miejsce od minGap do końca obecnej kolejki
+            targetIndex = Math.floor(Math.random() * (state.queue.length - minGap + 1)) + minGap;
+        }
+
+        state.queue.splice(targetIndex, 0, id);
+    }
+
+    function handleNext() {
+        nextQuestion();
+    }
+
+    function showFinishScreen() {
+        document.getElementById('quiz-card').classList.add('hidden');
+        document.getElementById('finish-card').classList.remove('hidden');
+    }
+
+    // Podgląd listy
+    function toggleList() {
+        const container = document.getElementById('full-list-container');
+        const btn = document.getElementById('toggle-list-btn');
+        if (container.classList.contains('hidden')) {
+            container.classList.remove('hidden');
+            btn.innerText = "Ukryj spis wszystkich lektur";
+            renderFullList();
+        } else {
+            container.classList.add('hidden');
+            btn.innerText = "Pokaż spis wszystkich lektur i postęp";
+        }
+    }
+
+    function renderFullList() {
+        const container = document.getElementById('full-list-container');
+        container.innerHTML = '';
+
+        // Grupowanie lektur po epokach
+        const grouped = {};
+        epochs.forEach(function(epoch) {
+            grouped[epoch] = state.books.filter(function(b) { return b.epoch === epoch; });
+        });
+
+        for (const epoch in grouped) {
+            const list = grouped[epoch];
+            if (list.length === 0) continue;
+
+            const groupDiv = document.createElement('div');
+            groupDiv.className = 'epoch-group';
+
+            const title = document.createElement('h3');
+            title.className = 'epoch-group-title';
+            title.innerText = epoch;
+            groupDiv.appendChild(title);
+
+            list.forEach(function(book) {
+                const item = document.createElement('div');
+                item.className = 'list-item';
+
+                const textSpan = document.createElement('span');
+                textSpan.className = 'list-item-text';
+                textSpan.innerHTML = '<strong>' + book.title + '</strong> – ' + book.author;
+
+                const badge = document.createElement('span');
+                if (book.score === 0) {
+                    badge.className = 'status-badge badge-none';
+                    badge.innerText = '0/2';
+                } else if (book.score === 1) {
+                    badge.className = 'status-badge badge-half';
+                    badge.innerText = '1/2';
+                } else {
+                    badge.className = 'status-badge badge-done';
+                    badge.innerText = 'Umiem';
+                }
+
+                item.appendChild(textSpan);
+                item.appendChild(badge);
+                groupDiv.appendChild(item);
+            });
+
+            container.appendChild(groupDiv);
+        }
+    }
+</script>
+
+</body>
+</html>
