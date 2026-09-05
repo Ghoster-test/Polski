@@ -130,6 +130,25 @@
             text-decoration: underline;
         }
 
+        .diag-box {
+            margin-top: 16px;
+            padding-top: 12px;
+            border-top: 1px dashed var(--border);
+            font-size: 0.8rem;
+        }
+
+        .diag-line {
+            padding: 2px 0;
+        }
+
+        .diag-ok {
+            color: var(--success);
+        }
+
+        .diag-bad {
+            color: var(--error);
+        }
+
         /* Logged-in bar */
         .authed-bar {
             display: flex;
@@ -468,15 +487,17 @@
     <!-- Login / Registration Card -->
     <div id="auth-card" class="card auth-card">
         <h2 id="auth-title-text" class="auth-title-text">Logowanie</h2>
-        <p class="auth-subtitle">Zaloguj się lub załóż konto, aby zapisywać postęp swojej nauki</p>
+        <p class="auth-subtitle">Zaloguj się lub załóż konto, aby zapisywać postęp swojej nauki (podaj swoją nazwę użytkownika i hasło)</p>
         <form id="auth-form">
-            <label class="auth-label" for="auth-email">E-mail</label>
-            <input class="auth-input" type="email" id="auth-email" required autocomplete="email">
+            <label class="auth-label" for="auth-username">Nazwa użytkownika</label>
+            <input class="auth-input" type="text" id="auth-username" required autocomplete="username" minlength="2" maxlength="30">
 
             <label class="auth-label" for="auth-password">Hasło</label>
             <input class="auth-input" type="password" id="auth-password" required minlength="6" autocomplete="current-password">
 
             <div id="auth-msg" class="auth-msg"></div>
+
+            <div id="diag-box" class="diag-box"></div>
 
             <button id="auth-submit" class="action-btn auth-submit" type="submit">Zaloguj się</button>
         </form>
@@ -650,8 +671,9 @@
 
     // Initialize application
     window.onload = function() {
+        showAuth();
+        runDiagnostics();
         if (!initSupabase()) {
-            showAuth();
             setAuthMsg('Brak konfiguracji bazy danych. Uzupełnij plik config.js (patrz instrukcja).');
             return;
         }
@@ -668,17 +690,58 @@
         supabase.auth.getSession().then(function(result) {
             if (result.data.session) {
                 enterApp(result.data.session.user);
-            } else {
-                showAuth();
             }
         });
     };
 
+    async function runDiagnostics() {
+        const box = document.getElementById('diag-box');
+        box.innerHTML = '';
+        const lines = [];
+
+        lines.push(typeof window.supabase !== 'undefined'
+            ? '1. Biblioteka Supabase: OK'
+            : '1. Biblioteka Supabase: NIE ZALADOWANA (brak internetu lub zablokowany CDN)');
+
+        const urlOk = typeof SUPABASE_URL !== 'undefined' && SUPABASE_URL && SUPABASE_URL.indexOf('TWOJ-PROJEKT') === -1;
+        lines.push(urlOk ? '2. Adres URL (config.js): OK' : '2. Adres URL (config.js): BRAK lub placeholder');
+
+        const keyOk = typeof SUPABASE_ANON_KEY !== 'undefined' && SUPABASE_ANON_KEY && SUPABASE_ANON_KEY.indexOf('twoj-klucz') === -1;
+        lines.push(keyOk ? '3. Klucz (config.js): OK' : '3. Klucz (config.js): BRAK lub placeholder');
+
+        if (urlOk && typeof window.supabase !== 'undefined') {
+            try {
+                const res = await fetch(SUPABASE_URL + '/auth/v1/health', { headers: { apikey: SUPABASE_ANON_KEY } });
+                lines.push(res.ok
+                    ? '4. Polaczenie z Supabase: OK'
+                    : '4. Polaczenie z Supabase: odpowiedziano, status ' + res.status);
+            } catch (e) {
+                lines.push('4. Polaczenie z Supabase: BLAD SIECI (' + (e.message || e) + ')');
+            }
+        } else {
+            lines.push('4. Polaczenie z Supabase: pominiete (brak konfiguracji)');
+        }
+
+        lines.forEach(function(l) {
+            const ok = l.indexOf('OK') !== -1;
+            const div = document.createElement('div');
+            div.className = 'diag-line ' + (ok ? 'diag-ok' : 'diag-bad');
+            div.innerText = l;
+            box.appendChild(div);
+        });
+    }
+
     function initSupabase() {
         if (typeof SUPABASE_URL !== 'undefined' && typeof SUPABASE_ANON_KEY !== 'undefined' &&
             SUPABASE_URL && SUPABASE_ANON_KEY && SUPABASE_URL.indexOf('TWOJ-PROJEKT') === -1) {
-            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            return true;
+            try {
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                return true;
+            } catch (e) {
+                console.error(e);
+                setAuthMsg('Błąd ładowania biblioteki Supabase. Sprawdź internet i odśwież stronę (Ctrl+F5).');
+                return false;
+            }
         }
         return false;
     }
@@ -692,7 +755,8 @@
         if (entered) return;
         entered = true;
         userId = user.id;
-        document.getElementById('user-email').innerText = 'Zalogowano: ' + (user.email || '');
+        const nick = (user.user_metadata && user.user_metadata.username) ? user.user_metadata.username : (user.email || '');
+        document.getElementById('user-email').innerText = 'Zalogowano: ' + nick;
         document.getElementById('sync-status').innerText = '';
         document.getElementById('auth-card').classList.add('hidden');
         document.getElementById('app-container').classList.remove('hidden');
@@ -737,32 +801,63 @@
 
     async function submitAuth(e) {
         e.preventDefault();
-        if (!supabase) return;
-        const email = document.getElementById('auth-email').value.trim();
+        if (!supabase) {
+            setAuthMsg('Brak połączenia z bazą – sprawdź plik config.js.');
+            return;
+        }
+        const username = document.getElementById('auth-username').value.trim();
         const password = document.getElementById('auth-password').value;
         setAuthMsg('');
-        document.getElementById('auth-submit').disabled = true;
+        const btn = document.getElementById('auth-submit');
+        btn.disabled = true;
 
-        if (authMode === 'login') {
-            const { data, error } = await supabase.auth.signInWithPassword({ email: email, password: password });
-            if (error) {
-                setAuthMsg(error.message);
-                document.getElementById('auth-submit').disabled = false;
-            }
-            document.getElementById('auth-form').reset();
-        } else {
-            const { data, error } = await supabase.auth.signUp({ email: email, password: password });
-            document.getElementById('auth-submit').disabled = false;
-            if (error) {
-                setAuthMsg(error.message);
-            } else if (data.session) {
-                setAuthMsg('Konto założone! Zalogowano automatycznie.', true);
-            } else {
-                setAuthMsg('Konto założone! Sprawdź skrzynkę e-mail i kliknij link potwierdzający. ' +
-                    '(Szybsza opcja: wyłącz potwierdzenie e-maila w Supabase – patrz instrukcja.)');
-            }
-            document.getElementById('auth-form').reset();
+        if (!/^[a-zA-Z0-9_.-]{2,30}$/.test(username)) {
+            setAuthMsg('Nazwa użytkownika: tylko litery (bez polskich znaków), cyfry oraz . _ - (2-30 znaków).');
+            btn.disabled = false;
+            return;
         }
+
+        // Zamiana nicku na wewnętrzny email (użytkownik go nie widzi)
+        const email = username + '@matura.local';
+
+        try {
+            if (authMode === 'login') {
+                const { data, error } = await supabase.auth.signInWithPassword({ email: email, password: password });
+                btn.disabled = false;
+                if (error) {
+                    setAuthMsg(friendlyAuthError(error.message + ' (' + error.status + ')'));
+                }
+                document.getElementById('auth-form').reset();
+            } else {
+                const { data, error } = await supabase.auth.signUp({
+                    email: email,
+                    password: password,
+                    options: { data: { username: username } }
+                });
+                btn.disabled = false;
+                if (error) {
+                    setAuthMsg(friendlyAuthError(error.message + ' (' + error.status + ')'));
+                } else if (data.session) {
+                    setAuthMsg('Konto założone! Zalogowano automatycznie.', true);
+                } else {
+                    setAuthMsg('Konto założone, ale wymaga potwierdzenia. Sprawdź e-mail – ' +
+                        'a najlepiej wyłącz "Confirm email" w Supabase (Authentication → Email), żeby rejestracja była natychmiastowa.');
+                }
+                document.getElementById('auth-form').reset();
+            }
+        } catch (err) {
+            console.error(err);
+            btn.disabled = false;
+            setAuthMsg('Błąd połączenia z serwerem: ' + (err.message || err) + '. Sprawdź internet i czy adres URL w config.js jest poprawny.');
+        }
+    }
+
+    function friendlyAuthError(msg) {
+        const lowered = (msg || '').toLowerCase();
+        if (lowered.indexOf('already registered') !== -1) return 'Ta nazwa użytkownika jest już zajęta.';
+        if (lowered.indexOf('invalid login credentials') !== -1) return 'Błędna nazwa użytkownika lub hasło.';
+        if (lowered.indexOf('password should be at least 6') !== -1) return 'Hasło musi mieć co najmniej 6 znaków.';
+        return msg;
     }
 
     async function logout() {
