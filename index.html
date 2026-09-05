@@ -4,13 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Trener Epok Literackich - Matura Podstawowa</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="config.js"></script>
     <style>
         :root {
             --primary: #3b82f6;
             --primary-hover: #2563eb;
             --success: #10b981;
+            --warning: #f59e0b;
             --error: #ef4444;
             --bg: #f8fafc;
             --card-bg: #ffffff;
@@ -56,135 +55,22 @@
             font-size: 0.95rem;
         }
 
-        /* Auth card */
-        .auth-card {
-            max-width: 400px;
-            margin: 40px auto 0;
-        }
-
-        .auth-title-text {
-            margin: 0 0 4px 0;
-            font-size: 1.4rem;
-        }
-
-        .auth-subtitle {
-            margin: 0 0 20px 0;
-            color: var(--text-muted);
-            font-size: 0.9rem;
-        }
-
-        .auth-label {
-            display: block;
-            font-size: 0.85rem;
-            font-weight: 600;
-            margin: 12px 0 4px;
-        }
-
-        .auth-input {
-            width: 100%;
-            box-sizing: border-box;
-            padding: 10px 12px;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            font-size: 0.95rem;
-            font-family: inherit;
-        }
-
-        .auth-input:focus {
-            outline: none;
-            border-color: var(--primary);
-        }
-
-        .auth-submit {
-            width: 100%;
-            margin-top: 18px;
-            padding: 12px;
-        }
-
-        .auth-msg {
-            margin-top: 12px;
-            font-size: 0.85rem;
-            color: var(--error);
-            min-height: 1em;
-            line-height: 1.4;
-        }
-
-        .auth-msg.ok {
-            color: var(--success);
-        }
-
-        .auth-switch {
-            text-align: center;
-            margin-top: 14px;
-            font-size: 0.9rem;
-            color: var(--text-muted);
-        }
-
-        .auth-switch a {
-            color: var(--primary);
-            cursor: pointer;
-            font-weight: 600;
-        }
-
-        .auth-switch a:hover {
-            text-decoration: underline;
-        }
-
-        .diag-box {
-            margin-top: 16px;
-            padding-top: 12px;
-            border-top: 1px dashed var(--border);
-            font-size: 0.8rem;
-        }
-
-        .diag-line {
-            padding: 2px 0;
-        }
-
-        .diag-ok {
-            color: var(--success);
-        }
-
-        .diag-bad {
-            color: var(--error);
-        }
-
-        /* Logged-in bar */
-        .authed-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 10px;
-            font-size: 0.85rem;
-            color: var(--text-muted);
-        }
-
-        .authed-user {
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .sync-status {
-            font-size: 0.8rem;
-            min-height: 1em;
-        }
-
-        .sync-status.ok {
-            color: var(--success);
-        }
-
-        .sync-status.err {
-            color: var(--error);
-        }
-
-        /* Progress Bar */
+        /* Progress Box z dwoma paskami */
         .progress-box {
             background: var(--card-bg);
             border: 1px solid var(--border);
             border-radius: 12px;
             padding: 16px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .progress-row {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
         }
 
         .progress-info {
@@ -192,7 +78,6 @@
             justify-content: space-between;
             font-size: 0.9rem;
             font-weight: 600;
-            margin-bottom: 8px;
         }
 
         .progress-bar-bg {
@@ -204,10 +89,17 @@
         }
 
         .progress-bar-fill {
-            background-color: var(--success);
             height: 100%;
             width: 0%;
             transition: width 0.4s ease;
+        }
+
+        .progress-green {
+            background-color: var(--success);
+        }
+
+        .progress-orange {
+            background-color: var(--warning);
         }
 
         /* Quiz Card */
@@ -366,11 +258,6 @@
             background-color: var(--primary-hover);
         }
 
-        .action-btn:disabled {
-            background-color: var(--border);
-            cursor: not-allowed;
-        }
-
         /* Finish Screen */
         .finish-screen {
             text-align: center;
@@ -483,130 +370,104 @@
 <body>
 
 <div class="container">
+    <header>
+        <h1>Trener Epok Literackich</h1>
+        <p class="subtitle">Wymagane lektury – Matura Podstawowa (szkoła ponadpodstawowa oraz wybrane z podstawowej)</p>
+    </header>
 
-    <!-- Login / Registration Card -->
-    <div id="auth-card" class="card auth-card">
-        <h2 id="auth-title-text" class="auth-title-text">Logowanie</h2>
-        <p class="auth-subtitle">Zaloguj się lub załóż konto, aby zapisywać postęp swojej nauki (podaj swoją nazwę użytkownika i hasło)</p>
-        <form id="auth-form">
-            <label class="auth-label" for="auth-username">Nazwa użytkownika</label>
-            <input class="auth-input" type="text" id="auth-username" required autocomplete="username" minlength="2" maxlength="30">
-
-            <label class="auth-label" for="auth-password">Hasło</label>
-            <input class="auth-input" type="password" id="auth-password" required minlength="6" autocomplete="current-password">
-
-            <div id="auth-msg" class="auth-msg"></div>
-
-            <div id="diag-box" class="diag-box"></div>
-
-            <button id="auth-submit" class="action-btn auth-submit" type="submit">Zaloguj się</button>
-        </form>
-        <p class="auth-switch">
-            Nie masz konta? <a id="auth-toggle-link" onclick="toggleAuthMode()">Załóż konto</a>
-        </p>
-    </div>
-
-    <!-- Main App -->
-    <div id="app-container" class="hidden">
-
-        <div class="authed-bar">
-            <span id="user-email" class="authed-user"></span>
-            <span id="sync-status" class="sync-status"></span>
-            <button class="reset-btn" onclick="logout()">Wyloguj się</button>
-        </div>
-
-        <header>
-            <h1>Trener Epok Literackich</h1>
-            <p class="subtitle">Wymagane lektury – Matura Podstawowa (szkoła ponadpodstawowa oraz wybrane z podstawowej)</p>
-        </header>
-
-        <!-- Progress Indicator -->
-        <div class="progress-box">
+    <!-- Panel Postępu z Dwoma Paskami -->
+    <div class="progress-box">
+        <!-- Główny postęp (2/2) -->
+        <div class="progress-row">
             <div class="progress-info">
-                <span>Twój ogólny postęp</span>
-                <span id="progress-text">Opanowano: 0 / 0 (0%)</span>
+                <span>Opanowane (2/2):</span>
+                <span id="progress-text">0 z 48 (0%)</span>
             </div>
             <div class="progress-bar-bg">
-                <div id="progress-bar" class="progress-bar-fill"></div>
+                <div id="progress-bar" class="progress-bar-fill progress-green"></div>
             </div>
         </div>
 
-        <!-- Main Card -->
-        <div id="quiz-card" class="card">
-            <div class="card-header">
-                <span class="card-label">Przypisz epokę</span>
-                <div class="learned-status" title="Musisz zaznaczyć poprawnie 2 razy z rzędu">
-                    <span class="card-label">Postęp lektury:</span>
-                    <span id="dot-1" class="dot"></span>
-                    <span id="dot-2" class="dot"></span>
-                </div>
+        <!-- Postęp przejściowy (1/2) -->
+        <div class="progress-row">
+            <div class="progress-info">
+                <span>Bliskie opanowania (1/2):</span>
+                <span id="progress-almost-text">0 z 48 (0%)</span>
             </div>
-
-            <h2 id="book-title" class="book-title">Ładowanie...</h2>
-            <p id="book-author" class="book-author">Ładowanie...</p>
-
-            <div class="epochs-grid" id="epochs-buttons">
-                <!-- Buttons dynamically generated -->
+            <div class="progress-bar-bg">
+                <div id="progress-bar-almost" class="progress-bar-fill progress-orange"></div>
             </div>
+        </div>
+    </div>
 
-            <!-- Feedback Area -->
-            <div id="feedback-area" class="feedback">
-                <h3 id="feedback-title" class="feedback-title"></h3>
-                <p id="feedback-text" class="feedback-text"></p>
-                <button id="next-btn" class="action-btn" onclick="handleNext()">Dalej</button>
+    <!-- Main Card -->
+    <div id="quiz-card" class="card">
+        <div class="card-header">
+            <span class="card-label">Przypisz epokę</span>
+            <div class="learned-status" title="Musisz zaznaczyć poprawnie 2 razy z rzędu">
+                <span class="card-label">Postęp lektury:</span>
+                <span id="dot-1" class="dot"></span>
+                <span id="dot-2" class="dot"></span>
             </div>
         </div>
 
-        <!-- Finish Screen (Initially Hidden) -->
-        <div id="finish-card" class="card finish-screen hidden">
-            <h2 class="finish-title">Gratulacje!</h2>
-            <p>Opanowałeś wszystkie wymagane lektury na maturę podstawową!</p>
-            <button class="action-btn" style="margin-top: 15px;" onclick="resetProgress()">Rozpocznij naukę od nowa</button>
+        <h2 id="book-title" class="book-title">Ładowanie...</h2>
+        <p id="book-author" class="book-author">Ładowanie...</p>
+
+        <div class="epochs-grid" id="epochs-buttons">
+            <!-- Buttons dynamically generated -->
         </div>
 
-        <!-- List of All Books -->
-        <div class="list-section">
-            <button id="toggle-list-btn" class="toggle-list-btn" onclick="toggleList()">Pokaż spis wszystkich lektur i postęp</button>
-            <div id="full-list-container" class="full-list hidden">
-                <!-- Populate via JS -->
-            </div>
+        <!-- Feedback Area -->
+        <div id="feedback-area" class="feedback">
+            <h3 id="feedback-title" class="feedback-title"></h3>
+            <p id="feedback-text" class="feedback-text"></p>
+            <button id="next-btn" class="action-btn" onclick="handleNext()">Dalej</button>
         </div>
+    </div>
 
-        <div class="control-btns">
-            <button class="reset-btn" onclick="confirmReset()">Wyczyść całą naukę i resetuj postęp</button>
+    <!-- Finish Screen (Initially Hidden) -->
+    <div id="finish-card" class="card finish-screen hidden">
+        <h2 class="finish-title">🎉 Gratulacje!</h2>
+        <p>Opanowałeś wszystkie wymagane lektury na maturę podstawową!</p>
+        <button class="action-btn" style="margin-top: 15px;" onclick="resetProgress()">Rozpocznij naukę od nowa</button>
+    </div>
+
+    <!-- List of All Books -->
+    <div class="list-section">
+        <button id="toggle-list-btn" class="toggle-list-btn" onclick="toggleList()">Pokaż spis wszystkich lektur i postęp</button>
+        <div id="full-list-container" class="full-list hidden">
+            <!-- Populate via JS -->
         </div>
+    </div>
 
+    <div class="control-btns">
+        <button class="reset-btn" onclick="confirmReset()">Wyczyść całą naukę i resetuj postęp</button>
     </div>
 </div>
 
 <script>
-    // Baza lektur CKE poziom podstawowy (ponadpodstawowa + wybrane lektury z podstawówki wymagane na egzaminie)
+    // Baza lektur CKE poziom podstawowy
     const defaultBooks = [
-        // Starożytność (Antyk)
         { title: "Biblia (Księga Rodzaju, Hioba, Koheleta, Pieśń nad Pieśniami, Psalmy, Apokalipsa)", author: "Różni autorzy", epoch: "Starożytność" },
         { title: "Mitologia (część I: Grecja)", author: "Jan Parandowski", epoch: "Starożytność" },
         { title: "Iliada (fragmenty)", author: "Homer", epoch: "Starożytność" },
         { title: "Antygona", author: "Sofokles", epoch: "Starożytność" },
-        // Średniowiecze
         { title: "Lament świętokrzyski (fragmenty)", author: "Autor nieznany", epoch: "Średniowiecze" },
         { title: "Rozmowa Mistrza Polikarpa ze Śmiercią (fragmenty)", author: "Autor nieznany", epoch: "Średniowiecze" },
         { title: "Pieśń o Rolandzie (fragmenty)", author: "Autor nieznany", epoch: "Średniowiecze" },
         { title: "Bogurodzica", author: "Autor nieznany", epoch: "Średniowiecze" },
-        // Renesans
         { title: "Pieśni (w tym Pieśń IX ks. I, Pieśń V ks. II)", author: "Jan Kochanowski", epoch: "Renesans" },
         { title: "Treny (tren IX, X, XI)", author: "Jan Kochanowski", epoch: "Renesans" },
         { title: "Odprawa posłów greckich", author: "Jan Kochanowski", epoch: "Renesans" },
         { title: "Kazania sejmowe (fragmenty)", author: "Piotr Skarga", epoch: "Renesans" },
         { title: "Makbet", author: "William Szekspir", epoch: "Renesans" },
-        // Barok
         { title: "Skąpiec", author: "Molier", epoch: "Barok" },
         { title: "Pamiętniki (fragmenty)", author: "Jan Chryzostom Pasek", epoch: "Barok" },
         { title: "Wybrane wiersze", author: "Jan Andrzej Morsztyn / Daniel Naborowski", epoch: "Barok" },
-        // Oświecenie
         { title: "Hymn do miłości ojczyzny", author: "Ignacy Krasicki", epoch: "Oświecenie" },
         { title: "Wybrana satyra (np. Żona modna)", author: "Ignacy Krasicki", epoch: "Oświecenie" },
         { title: "Bajki", author: "Ignacy Krasicki", epoch: "Oświecenie" },
-        // Romantyzm
         { title: "Oda do młodości", author: "Adam Mickiewicz", epoch: "Romantyzm" },
         { title: "Wybrane ballady (w tym Romantyczność)", author: "Adam Mickiewicz", epoch: "Romantyzm" },
         { title: "Sonety krymskie (wybrane)", author: "Adam Mickiewicz", epoch: "Romantyzm" },
@@ -618,18 +479,14 @@
         { title: "Balladyna", author: "Juliusz Słowacki", epoch: "Romantyzm" },
         { title: "Dziady cz. II", author: "Adam Mickiewicz", epoch: "Romantyzm" },
         { title: "Pan Tadeusz", author: "Adam Mickiewicz", epoch: "Romantyzm" },
-        // Pozytywizm
         { title: "Lalka", author: "Bolesław Prus", epoch: "Pozytywizm" },
         { title: "Potop (fragmenty)", author: "Henryk Sienkiewicz", epoch: "Pozytywizm" },
         { title: "Gloria victis", author: "Eliza Orzeszkowa", epoch: "Pozytywizm" },
         { title: "Zbrodnia i kara", author: "Fiodor Dostojewski", epoch: "Pozytywizm" },
-        // Młoda Polska
         { title: "Wesele", author: "Stanisław Wyspiański", epoch: "Młoda Polska" },
         { title: "Chłopi (tom I - Jesień, fragmenty)", author: "Władysław Stanisław Reymont", epoch: "Młoda Polska" },
-        // Dwudziestolecie międzywojenne
         { title: "Przedwiośnie", author: "Stefan Żeromski", epoch: "Dwudziestolecie międzywojenne" },
         { title: "Ferdydurke (fragmenty)", author: "Witold Gombrowicz", epoch: "Dwudziestolecie międzywojenne" },
-        // Współczesność
         { title: "Proszę państwa do gazu", author: "Tadeusz Borowski", epoch: "Współczesność" },
         { title: "Inny świat (fragmenty)", author: "Gustaw Herling-Grudziński", epoch: "Współczesność" },
         { title: "Zdążyć przed Panem Bogiem", author: "Hanna Krall", epoch: "Współczesność" },
@@ -661,292 +518,48 @@
         currentId: null
     };
 
-    const STORAGE_KEY = 'matura_trainer_state_v1';
-
-    let supabase = null;
-    let userId = null;
-    let entered = false;
-    let saveTimer = null;
-    let authMode = 'login';
-
-    // Initialize application
     window.onload = function() {
-        showAuth();
-        runDiagnostics();
-        if (!initSupabase()) {
-            setAuthMsg('Brak konfiguracji bazy danych. Uzupełnij plik config.js (patrz instrukcja).');
-            return;
-        }
+        loadProgress();
         renderEpochButtons();
-
-        supabase.auth.onAuthStateChange(function(event, session) {
-            if (session) {
-                enterApp(session.user);
-            } else {
-                leaveApp();
-            }
-        });
-
-        supabase.auth.getSession().then(function(result) {
-            if (result.data.session) {
-                enterApp(result.data.session.user);
-            }
-        });
+        updateProgressBar(); // <-- Naprawione: Paski ładują się wizualnie od razu przy starcie strony
+        nextQuestion();
     };
 
-    async function runDiagnostics() {
-        const box = document.getElementById('diag-box');
-        box.innerHTML = '';
-        const lines = [];
-
-        lines.push(typeof window.supabase !== 'undefined'
-            ? '1. Biblioteka Supabase: OK'
-            : '1. Biblioteka Supabase: NIE ZALADOWANA (brak internetu lub zablokowany CDN)');
-
-        const urlOk = typeof SUPABASE_URL !== 'undefined' && SUPABASE_URL && SUPABASE_URL.indexOf('TWOJ-PROJEKT') === -1;
-        lines.push(urlOk ? '2. Adres URL (config.js): OK' : '2. Adres URL (config.js): BRAK lub placeholder');
-
-        const keyOk = typeof SUPABASE_ANON_KEY !== 'undefined' && SUPABASE_ANON_KEY && SUPABASE_ANON_KEY.indexOf('twoj-klucz') === -1;
-        lines.push(keyOk ? '3. Klucz (config.js): OK' : '3. Klucz (config.js): BRAK lub placeholder');
-
-        if (urlOk && typeof window.supabase !== 'undefined') {
-            try {
-                const res = await fetch(SUPABASE_URL + '/auth/v1/health', { headers: { apikey: SUPABASE_ANON_KEY } });
-                lines.push(res.ok
-                    ? '4. Polaczenie z Supabase: OK'
-                    : '4. Polaczenie z Supabase: odpowiedziano, status ' + res.status);
-            } catch (e) {
-                lines.push('4. Polaczenie z Supabase: BLAD SIECI (' + (e.message || e) + ')');
-            }
-        } else {
-            lines.push('4. Polaczenie z Supabase: pominiete (brak konfiguracji)');
-        }
-
-        lines.forEach(function(l) {
-            const ok = l.indexOf('OK') !== -1;
-            const div = document.createElement('div');
-            div.className = 'diag-line ' + (ok ? 'diag-ok' : 'diag-bad');
-            div.innerText = l;
-            box.appendChild(div);
-        });
-    }
-
-    function initSupabase() {
-        if (typeof SUPABASE_URL !== 'undefined' && typeof SUPABASE_ANON_KEY !== 'undefined' &&
-            SUPABASE_URL && SUPABASE_ANON_KEY && SUPABASE_URL.indexOf('TWOJ-PROJEKT') === -1) {
-            try {
-                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                return true;
-            } catch (e) {
-                console.error(e);
-                setAuthMsg('Błąd ładowania biblioteki Supabase. Sprawdź internet i odśwież stronę (Ctrl+F5).');
-                return false;
-            }
-        }
-        return false;
-    }
-
-    function showAuth() {
-        document.getElementById('auth-card').classList.remove('hidden');
-        document.getElementById('app-container').classList.add('hidden');
-    }
-
-    function enterApp(user) {
-        if (entered) return;
-        entered = true;
-        userId = user.id;
-        const nick = (user.user_metadata && user.user_metadata.username) ? user.user_metadata.username : (user.email || '');
-        document.getElementById('user-email').innerText = 'Zalogowano: ' + nick;
-        document.getElementById('sync-status').innerText = '';
-        document.getElementById('auth-card').classList.add('hidden');
-        document.getElementById('app-container').classList.remove('hidden');
-        document.getElementById('quiz-card').classList.remove('hidden');
-        document.getElementById('finish-card').classList.add('hidden');
-        document.getElementById('feedback-area').style.display = 'none';
-        loadProgress().then(nextQuestion);
-    }
-
-    function leaveApp() {
-        entered = false;
-        userId = null;
-        setSyncStatus('', false);
-        showAuth();
-    }
-
-    function toggleAuthMode() {
-        if (!supabase) return;
-        authMode = authMode === 'login' ? 'register' : 'login';
-        const isLogin = authMode === 'login';
-        document.getElementById('auth-title-text').innerText = isLogin ? 'Logowanie' : 'Rejestracja';
-        document.getElementById('auth-submit').innerText = isLogin ? 'Zaloguj się' : 'Załóż konto';
-        document.getElementById('auth-toggle-link').innerText = isLogin ? 'Załóż konto' : 'Masz już konto? Zaloguj się';
-        document.getElementById('auth-password').autocomplete = isLogin ? 'current-password' : 'new-password';
-        setAuthMsg('');
-    }
-
-    function setAuthMsg(text, ok) {
-        const el = document.getElementById('auth-msg');
-        el.innerText = text || '';
-        el.className = 'auth-msg' + (ok ? ' ok' : '');
-    }
-
-    function setSyncStatus(text, ok) {
-        const el = document.getElementById('sync-status');
-        if (!el) return;
-        el.innerText = text || '';
-        el.className = 'sync-status' + (ok ? ' ok' : text ? ' err' : '');
-    }
-
-    document.getElementById('auth-form').addEventListener('submit', submitAuth);
-
-    async function submitAuth(e) {
-        e.preventDefault();
-        if (!supabase) {
-            setAuthMsg('Brak połączenia z bazą – sprawdź plik config.js.');
-            return;
-        }
-        const username = document.getElementById('auth-username').value.trim();
-        const password = document.getElementById('auth-password').value;
-        setAuthMsg('');
-        const btn = document.getElementById('auth-submit');
-        btn.disabled = true;
-
-        if (!/^[a-zA-Z0-9_.-]{2,30}$/.test(username)) {
-            setAuthMsg('Nazwa użytkownika: tylko litery (bez polskich znaków), cyfry oraz . _ - (2-30 znaków).');
-            btn.disabled = false;
-            return;
-        }
-
-        // Zamiana nicku na wewnętrzny email (użytkownik go nie widzi)
-        const email = username + '@matura.local';
-
-        try {
-            if (authMode === 'login') {
-                const { data, error } = await supabase.auth.signInWithPassword({ email: email, password: password });
-                btn.disabled = false;
-                if (error) {
-                    setAuthMsg(friendlyAuthError(error.message + ' (' + error.status + ')'));
-                }
-                document.getElementById('auth-form').reset();
-            } else {
-                const { data, error } = await supabase.auth.signUp({
-                    email: email,
-                    password: password,
-                    options: { data: { username: username } }
-                });
-                btn.disabled = false;
-                if (error) {
-                    setAuthMsg(friendlyAuthError(error.message + ' (' + error.status + ')'));
-                } else if (data.session) {
-                    setAuthMsg('Konto założone! Zalogowano automatycznie.', true);
-                } else {
-                    setAuthMsg('Konto założone, ale wymaga potwierdzenia. Sprawdź e-mail – ' +
-                        'a najlepiej wyłącz "Confirm email" w Supabase (Authentication → Email), żeby rejestracja była natychmiastowa.');
-                }
-                document.getElementById('auth-form').reset();
-            }
-        } catch (err) {
-            console.error(err);
-            btn.disabled = false;
-            setAuthMsg('Błąd połączenia z serwerem: ' + (err.message || err) + '. Sprawdź internet i czy adres URL w config.js jest poprawny.');
-        }
-    }
-
-    function friendlyAuthError(msg) {
-        const lowered = (msg || '').toLowerCase();
-        if (lowered.indexOf('already registered') !== -1) return 'Ta nazwa użytkownika jest już zajęta.';
-        if (lowered.indexOf('invalid login credentials') !== -1) return 'Błędna nazwa użytkownika lub hasło.';
-        if (lowered.indexOf('password should be at least 6') !== -1) return 'Hasło musi mieć co najmniej 6 znaków.';
-        return msg;
-    }
-
-    async function logout() {
-        if (supabase) {
-            await supabase.auth.signOut();
-        }
-    }
-
-    // ---------- Zapisywanie do bazy ----------
-
     function loadProgress() {
-        const key = userId ? STORAGE_KEY + '_' + userId : STORAGE_KEY;
-        const saved = localStorage.getItem(key);
-        if (saved) {
-            try {
+        try {
+            const saved = localStorage.getItem('matura_trainer_state_v1');
+            if (saved) {
                 state = JSON.parse(saved);
                 if (!state.books || state.books.length !== defaultBooks.length) {
                     resetProgress();
                 }
-            } catch (e) {
+            } else {
                 resetProgress();
             }
-        } else {
+        } catch (e) {
+            console.error("Nie udało się odczytać zapisu (LocalStorage):", e);
             resetProgress();
         }
-
-        if (supabase && userId) {
-            return supabase
-                .from('user_progress')
-                .select('state')
-                .eq('user_id', userId)
-                .maybeSingle()
-                .then(function(result) {
-                    if (result.data && result.data.state) {
-                        state = result.data.state;
-                        if (!state.books || state.books.length !== defaultBooks.length) {
-                            resetProgress();
-                        }
-                    }
-                    saveNow();
-                    updateProgressBar();
-                    if (!document.getElementById('full-list-container').classList.contains('hidden')) {
-                        renderFullList();
-                    }
-                });
-        }
-        return Promise.resolve();
     }
 
     function saveProgress() {
-        const key = userId ? STORAGE_KEY + '_' + userId : STORAGE_KEY;
-        localStorage.setItem(key, JSON.stringify(state));
-        if (supabase && userId) {
-            clearTimeout(saveTimer);
-            saveTimer = setTimeout(saveNow, 400);
+        try {
+            localStorage.setItem('matura_trainer_state_v1', JSON.stringify(state));
+        } catch (e) {
+            console.error("Nie udało się zapisać postępu (LocalStorage):", e);
         }
         updateProgressBar();
     }
 
-    function saveNow() {
-        if (!supabase || !userId) return;
-        return supabase
-            .from('user_progress')
-            .upsert(
-                { user_id: userId, state: state, updated_at: new Date().toISOString() },
-                { onConflict: 'user_id' }
-            )
-            .then(function(result) {
-                if (result.error) {
-                    setSyncStatus('Błąd zapisu danych', false);
-                    console.error('Zapis do bazy nie powiódł się:', result.error.message);
-                } else {
-                    setSyncStatus('Zapisano', true);
-                }
-            });
-    }
-
     function resetProgress() {
-        state.books = defaultBooks.map(function(b, index) {
-            return {
-                id: index,
-                title: b.title,
-                author: b.author,
-                epoch: b.epoch,
-                score: 0 // Liczba poprawnych odpowiedzi z rzędu (0, 1 lub 2)
-            };
-        });
-        // Generowanie przetasowanej kolejki
-        state.queue = state.books.map(function(b) { return b.id; });
+        state.books = defaultBooks.map((b, index) => ({
+            id: index,
+            title: b.title,
+            author: b.author,
+            epoch: b.epoch,
+            score: 0
+        }));
+        state.queue = state.books.map(b => b.id);
         shuffle(state.queue);
         state.currentId = null;
         saveProgress();
@@ -961,7 +574,6 @@
         }
     }
 
-    // Algorytm Fisher-Yates shuffle
     function shuffle(array) {
         for (let i = array.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
@@ -972,39 +584,43 @@
     function renderEpochButtons() {
         const container = document.getElementById('epochs-buttons');
         container.innerHTML = '';
-        epochs.forEach(function(epoch) {
+        epochs.forEach(epoch => {
             const btn = document.createElement('button');
             btn.className = 'epoch-btn';
             btn.innerText = epoch;
-            btn.onclick = function() { submitAnswer(epoch, btn); };
+            btn.onclick = () => submitAnswer(epoch, btn);
             container.appendChild(btn);
         });
     }
 
     function updateProgressBar() {
         const total = state.books.length;
-        const learned = state.books.filter(function(b) { return b.score >= 2; }).length;
-        const percentage = total > 0 ? Math.round((learned / total) * 100) : 0;
+        const learned = state.books.filter(b => b.score >= 2).length;
+        const almostLearned = state.books.filter(b => b.score === 1).length;
 
-        document.getElementById('progress-text').innerText = 'Opanowano: ' + learned + ' z ' + total + ' lektur (' + percentage + '%)';
-        document.getElementById('progress-bar').style.width = percentage + '%';
+        const percentageLearned = total > 0 ? Math.round((learned / total) * 100) : 0;
+        const percentageAlmost = total > 0 ? Math.round((almostLearned / total) * 100) : 0;
 
-        // Odśwież listę, jeśli jest otwarta
+        // Aktualizacja pierwszego paska (Opanowane)
+        document.getElementById('progress-text').innerText = `${learned} z ${total} (${percentageLearned}%)`;
+        document.getElementById('progress-bar').style.width = percentageLearned + '%';
+
+        // Aktualizacja drugiego paska (Bliskie opanowania)
+        document.getElementById('progress-almost-text').innerText = `${almostLearned} z ${total} (${percentageAlmost}%)`;
+        document.getElementById('progress-bar-almost').style.width = percentageAlmost + '%';
+
         if (!document.getElementById('full-list-container').classList.contains('hidden')) {
             renderFullList();
         }
     }
 
     function nextQuestion() {
-        // Schowaj panel feedbacku
         document.getElementById('feedback-area').style.display = 'none';
 
-        // Jeśli zresetowano postęp w trakcie wyświetlania pytania
         if (state.currentId !== null && state.books[state.currentId].score >= 2) {
             state.currentId = null;
         }
 
-        // Pobierz następny element z kolejki, jeśli nie mamy aktywnego pytania
         if (state.currentId === null) {
             if (state.queue.length === 0) {
                 showFinishScreen();
@@ -1014,29 +630,25 @@
             saveProgress();
         }
 
-        const book = state.books.find(function(b) { return b.id === state.currentId; });
+        const book = state.books.find(b => b.id === state.currentId);
 
-        // Wyświetl dane
         document.getElementById('book-title').innerText = book.title;
         document.getElementById('book-author').innerText = book.author;
 
-        // Zaktualizuj kropki postępu lektury
         document.getElementById('dot-1').className = 'dot' + (book.score >= 1 ? ' active' : '');
         document.getElementById('dot-2').className = 'dot' + (book.score >= 2 ? ' active' : '');
 
-        // Odblokuj i zresetuj przyciski epok
-        document.querySelectorAll('.epoch-btn').forEach(function(btn) {
+        document.querySelectorAll('.epoch-btn').forEach(btn => {
             btn.disabled = false;
             btn.className = 'epoch-btn';
         });
     }
 
     function submitAnswer(selectedEpoch, clickedButton) {
-        const book = state.books.find(function(b) { return b.id === state.currentId; });
+        const book = state.books.find(b => b.id === state.currentId);
         const isCorrect = book.epoch === selectedEpoch;
 
-        // Zablokuj przyciski
-        document.querySelectorAll('.epoch-btn').forEach(function(btn) {
+        document.querySelectorAll('.epoch-btn').forEach(btn => {
             btn.disabled = true;
             if (btn.innerText === book.epoch) {
                 btn.classList.add('correct-choice');
@@ -1056,24 +668,22 @@
         if (isCorrect) {
             book.score++;
             feedbackArea.className = 'feedback is-correct';
-            feedbackTitle.innerText = "Dobrze!";
-
+            feedbackTitle.innerText = "Dobrze! 👍";
+            
             if (book.score >= 2) {
-                feedbackText.innerText = 'Prawidłowa odpowiedź. "' + book.title + '" to ' + book.epoch + '. Książka opanowana (zrobiłeś ją dobrze dwa razy) – usunięto ją z aktywnej kolejki!';
-                state.currentId = null; // Nie wraca do kolejki
+                feedbackText.innerText = `Prawidłowa odpowiedź. "${book.title}" to ${book.epoch}. Książka została trwale opanowana!`;
+                state.currentId = null; 
             } else {
-                feedbackText.innerText = 'Poprawnie! To Twoja pierwsza poprawna odpowiedź z rzędu dla tej książki. Potrzebujesz jeszcze jednej, by uznać ją za opanowaną.';
-                // Przesuń z powrotem do kolejki za jakiś czas
+                feedbackText.innerText = `Poprawnie! To pierwsza dobra odpowiedź z rzędu. Potrzebujesz jeszcze jednej, by uznać tę lekturę za opanowaną.`;
                 insertBackIntoQueue(book.id, true);
                 state.currentId = null;
             }
         } else {
-            book.score = 0; // Reset postępu do zera
+            book.score = 0; 
             feedbackArea.className = 'feedback is-incorrect';
-            feedbackTitle.innerText = "Źle!";
-            feedbackText.innerHTML = 'Niestety. "' + book.title + '" (autor: ' + book.author + ') reprezentuje epokę: <strong>' + book.epoch + '</strong>.<br>Licznik postępu tej lektury został zresetowany. Książka powróci do Ciebie za jakiś czas.';
-
-            // Wsuń z powrotem do kolejki dosyć szybko, ale nie natychmiast
+            feedbackTitle.innerText = "Źle! ❌";
+            feedbackText.innerHTML = `Niestety. "${book.title}" (autor: ${book.author}) reprezentuje epokę: <strong>${book.epoch}</strong>.<br>Licznik postępu tej lektury spadł do 0. Książka powróci do Ciebie za jakiś czas.`;
+            
             insertBackIntoQueue(book.id, false);
             state.currentId = null;
         }
@@ -1081,24 +691,18 @@
         saveProgress();
     }
 
-    // Inteligentny powrót lektury do kolejki
     function insertBackIntoQueue(id, isCorrect) {
         if (state.queue.length === 0) {
             state.queue.push(id);
             return;
         }
 
-        // Ustalamy minimalny dystans przed ponownym pokazaniem się lektury
-        // Jeśli odpowiedź była błędna, wraca szybciej (np. po min. 3 innych pytaniach).
-        // Jeśli była poprawna, wraca później (np. po min. 6 innych pytaniach).
         let minGap = isCorrect ? 6 : 3;
         let targetIndex;
 
         if (state.queue.length <= minGap) {
-            // Jeśli w kolejce jest mało elementów, wstaw na sam koniec
             targetIndex = state.queue.length;
         } else {
-            // Wstaw w losowe miejsce od minGap do końca obecnej kolejki
             targetIndex = Math.floor(Math.random() * (state.queue.length - minGap + 1)) + minGap;
         }
 
@@ -1114,7 +718,6 @@
         document.getElementById('finish-card').classList.remove('hidden');
     }
 
-    // Podgląd listy
     function toggleList() {
         const container = document.getElementById('full-list-container');
         const btn = document.getElementById('toggle-list-btn');
@@ -1132,14 +735,12 @@
         const container = document.getElementById('full-list-container');
         container.innerHTML = '';
 
-        // Grupowanie lektur po epokach
         const grouped = {};
-        epochs.forEach(function(epoch) {
-            grouped[epoch] = state.books.filter(function(b) { return b.epoch === epoch; });
+        epochs.forEach(epoch => {
+            grouped[epoch] = state.books.filter(b => b.epoch === epoch);
         });
 
-        for (const epoch in grouped) {
-            const list = grouped[epoch];
+        for (const [epoch, list] of Object.entries(grouped)) {
             if (list.length === 0) continue;
 
             const groupDiv = document.createElement('div');
@@ -1150,13 +751,13 @@
             title.innerText = epoch;
             groupDiv.appendChild(title);
 
-            list.forEach(function(book) {
+            list.forEach(book => {
                 const item = document.createElement('div');
                 item.className = 'list-item';
 
                 const textSpan = document.createElement('span');
                 textSpan.className = 'list-item-text';
-                textSpan.innerHTML = '<strong>' + book.title + '</strong> – ' + book.author;
+                textSpan.innerHTML = `<strong>${book.title}</strong> – ${book.author}`;
 
                 const badge = document.createElement('span');
                 if (book.score === 0) {
