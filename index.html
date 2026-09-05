@@ -55,6 +55,37 @@
             font-size: 0.95rem;
         }
 
+        /* Selektor trybu nauki */
+        .mode-selector {
+            display: flex;
+            background-color: var(--border);
+            padding: 4px;
+            border-radius: 8px;
+            gap: 4px;
+            margin-bottom: 5px;
+            flex-wrap: wrap;
+        }
+
+        .mode-btn {
+            flex: 1;
+            background: none;
+            border: none;
+            padding: 8px 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            color: var(--text-muted);
+            min-width: 130px;
+        }
+
+        .mode-btn.active {
+            background-color: var(--card-bg);
+            color: var(--primary);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
         /* Progress Box z dwoma paskami */
         .progress-box {
             background: var(--card-bg);
@@ -160,7 +191,7 @@
             margin: 0 0 24px 0;
         }
 
-        /* Epoch buttons */
+        /* Epoch buttons (tryb wyboru) */
         .epochs-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -194,6 +225,60 @@
         .epoch-btn:disabled {
             cursor: not-allowed;
             opacity: 0.8;
+        }
+
+        /* Elementy trybu wpisywania */
+        .typing-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        #epoch-input, .recall-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s;
+            box-sizing: border-box;
+            width: 100%;
+        }
+
+        #epoch-input:focus, .recall-input:focus {
+            border-color: var(--primary);
+        }
+
+        #epoch-input:disabled, .recall-input:disabled {
+            background-color: #f1f5f9;
+            color: var(--text-muted);
+            cursor: not-allowed;
+        }
+
+        .epoch-hints {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            line-height: 1.4;
+            background-color: #f8fafc;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .epoch-hints span {
+            background-color: #e2e8f0;
+            color: #334155;
+            padding: 2px 6px;
+            border-radius: 4px;
+            display: inline-block;
+            margin: 2px 2px;
+            font-weight: 500;
         }
 
         /* Verification colors */
@@ -247,15 +332,21 @@
             color: white;
             border: none;
             border-radius: 8px;
-            padding: 10px 20px;
+            padding: 12px 20px;
             font-size: 0.95rem;
             font-weight: 600;
             cursor: pointer;
             transition: background-color 0.2s;
         }
 
-        .action-btn:hover {
+        .action-btn:hover:not(:disabled) {
             background-color: var(--primary-hover);
+        }
+
+        .action-btn:disabled {
+            background-color: var(--border);
+            color: var(--text-muted);
+            cursor: not-allowed;
         }
 
         /* Finish Screen */
@@ -375,12 +466,24 @@
         <p class="subtitle">Wymagane lektury – Matura Podstawowa (szkoła ponadpodstawowa oraz wybrane z podstawowej)</p>
     </header>
 
+    <!-- Przełącznik trybu nauki -->
+    <div class="mode-selector">
+        <button id="mode-btn-browse" class="mode-btn" onclick="setMode('browse')">Fiszki</button>
+        <button id="mode-btn-buttons" class="mode-btn" onclick="setMode('buttons')">Wybór</button>
+        <button id="mode-btn-typing" class="mode-btn" onclick="setMode('typing')">Wpisz epokę</button>
+        <button id="mode-btn-recall" class="mode-btn" onclick="setMode('recall')">Wpisz lektury</button>
+        <button id="mode-btn-sort" class="mode-btn" onclick="setMode('sort')">Chronologia</button>
+        <button id="mode-btn-type-epochs" class="mode-btn" onclick="setMode('type-epochs')">Pisz epoki</button>
+        <button id="mode-btn-timeline-choice" class="mode-btn" onclick="setMode('timeline-choice')">Ramy (Wybór)</button>
+        <button id="mode-btn-timeline-type" class="mode-btn" onclick="setMode('timeline-type')">Ramy (Pisanie)</button>
+    </div>
+
     <!-- Panel Postępu z Dwoma Paskami -->
     <div class="progress-box">
         <!-- Główny postęp (2/2) -->
         <div class="progress-row">
             <div class="progress-info">
-                <span>Opanowane (2/2):</span>
+                <span id="progress-label-main">Opanowane (2/2):</span>
                 <span id="progress-text">0 z 48 (0%)</span>
             </div>
             <div class="progress-bar-bg">
@@ -391,7 +494,7 @@
         <!-- Postęp przejściowy (1/2) -->
         <div class="progress-row">
             <div class="progress-info">
-                <span>Bliskie opanowania (1/2):</span>
+                <span id="progress-label-almost">Bliskie opanowania (1/2):</span>
                 <span id="progress-almost-text">0 z 48 (0%)</span>
             </div>
             <div class="progress-bar-bg">
@@ -414,8 +517,143 @@
         <h2 id="book-title" class="book-title">Ładowanie...</h2>
         <p id="book-author" class="book-author">Ładowanie...</p>
 
+        <!-- Tryb 0: Przeglądanie (Fiszki) -->
+        <div id="browse-container" class="typing-container hidden" style="text-align: center; margin-top: 15px;">
+            <div style="font-size: 1.1rem; margin-bottom: 8px; color: var(--text-muted);">
+                Należy do epoki:
+            </div>
+            <div id="browse-epoch-display" style="font-size: 1.8rem; font-weight: 800; color: var(--success); margin-bottom: 24px; padding: 10px; background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 12px; display: inline-block; min-width: 200px;">
+                -
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button id="prev-browse-btn" class="action-btn" style="flex: 1; background-color: var(--text-muted);" onclick="prevBrowseBook()">Poprzednia</button>
+                <button class="action-btn" style="flex: 2;" onclick="nextBrowseBook()">Następna lektura</button>
+            </div>
+        </div>
+
+        <!-- Tryb 1: Wybór przyciskowy -->
         <div class="epochs-grid" id="epochs-buttons">
-            <!-- Buttons dynamically generated -->
+            <!-- Wygenerowane przyciski -->
+        </div>
+
+        <!-- Tryb 2: Wpisywanie ręczne epoki -->
+        <div id="typing-container" class="typing-container hidden">
+            <div class="input-row">
+                <input type="text" id="epoch-input" placeholder="Wpisz epokę..." onkeydown="handleKeyPress(event)">
+                <button id="check-typed-btn" class="action-btn" onclick="submitTypedAnswer()">Sprawdź</button>
+            </div>
+            <div class="epoch-hints">
+                <strong>Wskazówka – prawidłowe nazwy epok:</strong><br>
+                <span>Starożytność</span> <span>Średniowiecze</span> <span>Renesans</span> <span>Barok</span> <span>Oświecenie</span> <span>Romantyzm</span> <span>Pozytywizm</span> <span>Młoda Polska</span> <span>Dwudziestolecie międzywojenne</span> <span>Współczesność</span>
+            </div>
+        </div>
+
+        <!-- Tryb 3: Pełna tablica wpisywania lektur danej epoki (Bez podpowiedzi) -->
+        <div id="recall-container" class="typing-container hidden">
+            <div style="font-size: 1.1rem; margin-bottom: 2px; color: var(--text-muted);">
+                Wpisz wszystkie lektury obowiązkowe z epoki:
+            </div>
+            <div id="recall-epoch-prompt" style="font-size: 1.8rem; font-weight: 800; color: var(--primary); margin-bottom: 16px; text-align: center;">
+                -
+            </div>
+            
+            <!-- Kontener z rzędami do wpisywania lektur (generowany dynamicznie) -->
+            <div id="recall-rows-container" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px;">
+                <!-- Rzędy wejściowe -->
+            </div>
+
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <button id="check-recall-btn" class="action-btn" style="flex: 1; min-width: 150px;" onclick="submitRecallAnswers()">Sprawdź odpowiedzi</button>
+                <button id="next-epoch-btn" class="action-btn hidden" style="flex: 1; min-width: 150px; background-color: var(--success);" onclick="nextRecallEpoch()">Dalej</button>
+                <button id="skip-epoch-btn" class="action-btn" style="flex: 1; min-width: 150px; background-color: var(--text-muted);" onclick="skipRecallEpoch()">Pomiń tę epokę</button>
+            </div>
+        </div>
+
+        <!-- Tryb 4: Gra w sortowanie epok -->
+        <div id="sort-container" class="typing-container hidden">
+            <div style="font-size: 1.1rem; margin-bottom: 12px; color: var(--text-muted); text-align: center;">
+                Ułóż epoki w kolejności chronologicznej (od najstarszej do najnowszej):
+            </div>
+            <div id="sort-pool" style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 20px; padding: 12px; background-color: #f1f5f9; border-radius: 8px; border: 1px solid var(--border);">
+                <!-- Przyciski wymieszanych epok -->
+            </div>
+            <div id="sort-slots" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px;">
+                <!-- 10 chronologicznych rzędów -->
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button id="check-sort-btn" class="action-btn" style="flex: 2;" onclick="submitSortedEpochs()">Sprawdź ułożenie</button>
+                <button class="action-btn" style="flex: 1; background-color: var(--text-muted);" onclick="initSortGame()">Zacznij od nowa</button>
+            </div>
+        </div>
+
+        <!-- Tryb 5: Gra we wpisywanie epok -->
+        <div id="type-epochs-container" class="typing-container hidden">
+            <div style="font-size: 1.1rem; margin-bottom: 12px; color: var(--text-muted); text-align: center;">
+                Wpisz nazwy wszystkich 10 epok w kolejności chronologicznej:
+            </div>
+            <div id="type-epochs-slots" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px;">
+                <!-- 10 pól tekstowych chronologii -->
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button id="check-type-epochs-btn" class="action-btn" style="flex: 2;" onclick="submitTypedEpochs()">Sprawdź odpowiedzi</button>
+                <button class="action-btn" style="flex: 1; background-color: var(--text-muted);" onclick="initTypeEpochsGame()">Wyczyść wszystko</button>
+            </div>
+        </div>
+
+        <!-- Tryb 6: Ramy czasowe i wydarzenia (Wybór) -->
+        <div id="timeline-choice-container" class="typing-container hidden" style="text-align: center;">
+            <div style="font-size: 1.1rem; margin-bottom: 2px; color: var(--text-muted);">
+                Ramy i wydarzenia przełomowe dla epoki:
+            </div>
+            <div id="timeline-choice-epoch-title" style="font-size: 1.8rem; font-weight: 800; color: var(--primary); margin-bottom: 16px;">
+                -
+            </div>
+            
+            <div id="timeline-choice-question-box" style="margin-bottom: 20px;">
+                <p id="timeline-choice-question-text" style="font-weight: 700; font-size: 1.1rem; margin-bottom: 15px;">-</p>
+                <div id="timeline-choice-options-grid" style="display: flex; flex-direction: column; gap: 8px;">
+                    <!-- 4 opcje -->
+                </div>
+            </div>
+
+            <div id="timeline-choice-feedback" class="feedback" style="margin-top: 15px;"></div>
+            <button id="next-timeline-choice-btn" class="action-btn hidden" style="width: 100%; margin-top: 15px;" onclick="nextTimelineChoiceQuestion()">Następne pytanie</button>
+        </div>
+
+        <!-- Tryb 7: Ramy czasowe i wydarzenia (Pisanie) -->
+        <div id="timeline-type-container" class="typing-container hidden">
+            <div style="font-size: 1.1rem; margin-bottom: 2px; color: var(--text-muted); text-align: center;">
+                Wpisz ramy i wydarzenia przełomowe dla epoki:
+            </div>
+            <div id="timeline-type-epoch-title" style="font-size: 1.8rem; font-weight: 800; color: var(--primary); margin-bottom: 16px; text-align: center;">
+                -
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 14px; margin-bottom: 20px;">
+                <div class="timeline-type-row" id="tl-type-row-start">
+                    <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">Wydarzenie początkowe:</label>
+                    <input type="text" id="tl-type-input-start" placeholder="Co rozpoczęło tę epokę? (np. wynalezienie pisma)..." class="recall-input" style="margin-top: 5px;">
+                    <div class="tl-correct-answer hidden" style="font-size: 0.8rem; font-weight: 500; margin-top: 4px;"></div>
+                </div>
+                <div class="timeline-type-row" id="tl-type-row-end">
+                    <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">Wydarzenie końcowe:</label>
+                    <input type="text" id="tl-type-input-end" placeholder="Co zakończyło tę epokę? (np. upadek rzymu)..." class="recall-input" style="margin-top: 5px;">
+                    <div class="tl-correct-answer hidden" style="font-size: 0.8rem; font-weight: 500; margin-top: 4px;"></div>
+                </div>
+                <div class="timeline-type-row" id="tl-type-row-years">
+                    <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">Ramy czasowe (lata):</label>
+                    <input type="text" id="tl-type-input-years" placeholder="W jakich latach trwała ta epoka? (np. V - XV w.)..." class="recall-input" style="margin-top: 5px;">
+                    <div class="tl-correct-answer hidden" style="font-size: 0.8rem; font-weight: 500; margin-top: 4px;"></div>
+                </div>
+            </div>
+
+            <div id="timeline-type-feedback" class="feedback" style="margin-bottom: 15px;"></div>
+
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <button id="check-timeline-type-btn" class="action-btn" style="flex: 2; min-width: 150px;" onclick="submitTimelineType()">Sprawdź odpowiedzi</button>
+                <button id="next-timeline-type-btn" class="action-btn hidden" style="flex: 2; min-width: 150px;" onclick="nextTimelineTypeQuestion()">Dalej</button>
+                <button id="skip-timeline-type-btn" class="action-btn" style="flex: 1; min-width: 100px; background-color: var(--text-muted);" onclick="skipTimelineType()">Pomiń</button>
+            </div>
         </div>
 
         <!-- Feedback Area -->
@@ -429,7 +667,7 @@
     <!-- Finish Screen (Initially Hidden) -->
     <div id="finish-card" class="card finish-screen hidden">
         <h2 class="finish-title">🎉 Gratulacje!</h2>
-        <p>Opanowałeś wszystkie wymagane lektury na maturę podstawową!</p>
+        <p>Opanowałeś wszystkie wymagane lektury w tym trybie nauki!</p>
         <button class="action-btn" style="margin-top: 15px;" onclick="resetProgress()">Rozpocznij naukę od nowa</button>
     </div>
 
@@ -512,28 +750,165 @@
         "Współczesność"
     ];
 
-    let state = {
-        books: [],
-        queue: [],
-        currentId: null
+    // Podręcznikowe ramy czasowe, wydarzenia początkowe i końcowe dla epok
+    const timelineData = {
+        "Starożytność": {
+            start: "Wynalezienie pisma / początki państwowości (Grecja/Rzym)",
+            end: "Upadek cesarstwa zachodniorzymskiego (476 r.)",
+            years: "ok. VIII w. p.n.e. - V w. n.e. (476 r.)",
+            startKeywords: ["pism", "panstw", "grec", "rzym", "viii"],
+            endKeywords: ["upadek", "rzym", "cesarst", "476"],
+            yearsKeywords: ["viii", "v", "antyk", "starozyt"]
+        },
+        "Średniowiecze": {
+            start: "Upadek cesarstwa zachodniorzymskiego (476 r.)",
+            end: "Wynalezienie druku / Odkrycie Ameryki / Upadek Konstantynopola (koniec XV w.)",
+            years: "V w. - XV w.",
+            startKeywords: ["upadek", "rzym", "cesarst", "476"],
+            endKeywords: ["druk", "ameryk", "kolumb", "konstantyn", "gutenberg", "xv"],
+            yearsKeywords: ["v", "xv"]
+        },
+        "Renesans": {
+            start: "Wynalezienie druku / Odkrycie Ameryki / Upadek Konstantynopola (koniec XV w.)",
+            end: "Śmierć Jana Kochanowskiego (1584 r.) / przełom XVI i XVII w.",
+            years: "koniec XV w. - przełom XVI i XVII w.",
+            startKeywords: ["druk", "ameryk", "kolumb", "konstantyn", "gutenberg", "xv"],
+            endKeywords: ["smierc", "kochanowsk", "xvi", "xvii", "1584"],
+            yearsKeywords: ["xv", "xvi", "xvii"]
+        },
+        "Barok": {
+            start: "Koniec XVI wieku (początek XVII w. w Polsce)",
+            end: "Lata 30. i 40. XVIII wieku (początek Oświecenia)",
+            years: "koniec XVI w. - połowa XVIII w.",
+            startKeywords: ["xvi", "xvii"],
+            endKeywords: ["xviii", "polow", "30", "40"],
+            yearsKeywords: ["xvi", "xviii", "polow"]
+        },
+        "Oświecenie": {
+            start: "Połowa XVIII wieku (w Polsce od ok. 1764 r.)",
+            end: "Wydanie 'Poezji' Adama Mickiewicza (1822 r.)",
+            years: "połowa XVIII w. - 1822 r.",
+            startKeywords: ["polow", "xviii", "1764", "poniatow"],
+            endKeywords: ["1822", "mickiewicz", "poezj", "debiut"],
+            yearsKeywords: ["xviii", "1822"]
+        },
+        "Romantyzm": {
+            start: "Wydanie 'Poezji' Adama Mickiewicza (1822 r.)",
+            end: "Upadek powstania styczniowego (1864 r.)",
+            years: "1822 r. - 1864 r.",
+            startKeywords: ["1822", "mickiewicz", "poezj", "debiut"],
+            endKeywords: ["1864", "styczniow", "powstan"],
+            yearsKeywords: ["1822", "1864"]
+        },
+        "Pozytywizm": {
+            start: "Upadek powstania styczniowego (1864 r.)",
+            end: "Lata 90. XIX wieku (ok. 1890 r.)",
+            years: "1864 r. - lata 90. XIX w.",
+            startKeywords: ["1864", "styczniow", "powstan"],
+            endKeywords: ["90", "xix", "1890"],
+            yearsKeywords: ["1864", "90", "xix"]
+        },
+        "Młoda Polska": {
+            start: "Lata 90. XIX wieku (ok. 1890 r.)",
+            end: "Koniec I wojny światowej i odzyskanie niepodległości przez Polskę (1918 r.)",
+            years: "1890 r. - 1918 r.",
+            startKeywords: ["90", "xix", "1890"],
+            endKeywords: ["1918", "wojn", "niepodlegl"],
+            yearsKeywords: ["1890", "1918"]
+        },
+        "Dwudziestolecie międzywojenne": {
+            start: "Koniec I wojny światowej (1918 r.)",
+            end: "Wybuch II wojny światowej (1 września 1939 r.)",
+            years: "1918 r. - 1939 r.",
+            startKeywords: ["1918", "wojn", "niepodlegl"],
+            endKeywords: ["1939", "wojn", "wrzes"],
+            yearsKeywords: ["1918", "1939"]
+        },
+        "Współczesność": {
+            start: "Wybuch II wojny światowej (1939 r.)",
+            end: "Trwa do dziś",
+            years: "od 1939 r. do dziś",
+            startKeywords: ["1939", "wojn", "wrzes"],
+            endKeywords: ["dzis", "teraz", "trwa"],
+            yearsKeywords: ["1939", "dzis"]
+        }
     };
+
+    let state = {
+        mode: 'browse', // 'browse', 'buttons', 'typing', 'recall', 'sort', 'type-epochs', 'timeline-choice', 'timeline-type'
+        books: [],
+        queueButtons: [],
+        queueTyping: [],
+        queueRecall: [],
+        queueTimelineChoice: [],
+        queueTimelineType: [],
+        currentIdButtons: null,
+        currentIdTyping: null,
+        currentEpochRecall: null,
+        lastRecalledBookId: null,
+        currentIdBrowse: 0,
+        timelineChoiceEpoch: null,
+        timelineStep: 0, // 0 - start, 1 - end, 2 - lata
+        timelineChoiceCorrectAnswers: [], // Tablica do sprawdzania, czy wszystkie 3 odpowiedzi w sesji wyboru były dobre
+        timelineTypeEpoch: null,
+        epochScores: {}, // Obiekt do trzymania osobnych postępów gier chronologii (choice, type)
+        scoreSort: 0,
+        scoreTypeEpochs: 0
+    };
+
+    // Stany dla mini-gier
+    let currentRecallSession = [];
+    let sortedState = Array(10).fill(null);
+    let sortPool = [];
+    let typedEpochsState = Array(10).fill("");
 
     window.onload = function() {
         loadProgress();
         renderEpochButtons();
-        updateProgressBar(); // <-- Naprawione: Paski ładują się wizualnie od razu przy starcie strony
-        nextQuestion();
+        setMode(state.mode);
     };
 
     function loadProgress() {
         try {
-            const saved = localStorage.getItem('matura_trainer_state_v1');
+            const saved = localStorage.getItem('matura_trainer_state_v4');
             if (saved) {
                 state = JSON.parse(saved);
                 if (!state.books || state.books.length !== defaultBooks.length) {
                     resetProgress();
+                    return;
                 }
+                // Dopełnianie ewentualnych pustych pól w celu uniknięcia błędów
+                checkAndRepairState();
             } else {
+                // Próba migracji ze starej wersji v3
+                const oldSaved = localStorage.getItem('matura_trainer_state_v3');
+                if (oldSaved) {
+                    const oldState = JSON.parse(oldSaved);
+                    if (oldState.books && oldState.books.length === defaultBooks.length) {
+                        state.books = oldState.books.map(b => ({
+                            id: b.id,
+                            title: b.title,
+                            author: b.author,
+                            epoch: b.epoch,
+                            scoreButtons: b.scoreButtons !== undefined ? b.scoreButtons : 0,
+                            scoreTyping: b.scoreTyping || 0,
+                            scoreRecall: b.scoreRecall || 0
+                        }));
+                        state.queueButtons = oldState.queueButtons || [];
+                        state.currentIdButtons = oldState.currentIdButtons;
+                        state.queueTyping = oldState.queueTyping || [];
+                        state.currentIdTyping = oldState.currentIdTyping;
+                        state.queueRecall = oldState.queueRecall || [];
+                        state.currentEpochRecall = oldState.currentEpochRecall;
+                        state.currentIdBrowse = oldState.currentIdBrowse || 0;
+                        state.mode = oldState.mode || 'browse';
+                        
+                        initNewTimelineQueues();
+                        checkAndRepairState();
+                        saveProgress();
+                        return;
+                    }
+                }
                 resetProgress();
             }
         } catch (e) {
@@ -542,9 +917,54 @@
         }
     }
 
+    function checkAndRepairState() {
+        if (state.queueTimelineChoice === undefined) {
+            state.queueTimelineChoice = epochs.slice();
+            shuffle(state.queueTimelineChoice);
+        }
+        if (state.timelineChoiceEpoch === undefined) state.timelineChoiceEpoch = null;
+        if (state.timelineStep === undefined) state.timelineStep = 0;
+        if (state.timelineChoiceCorrectAnswers === undefined) state.timelineChoiceCorrectAnswers = [];
+
+        if (state.queueTimelineType === undefined) {
+            state.queueTimelineType = epochs.slice();
+            shuffle(state.queueTimelineType);
+        }
+        if (state.timelineTypeEpoch === undefined) state.timelineTypeEpoch = null;
+
+        if (!state.epochScores) {
+            state.epochScores = {};
+            epochs.forEach(ep => {
+                state.epochScores[ep] = { choice: 0, type: 0 };
+            });
+        } else {
+            epochs.forEach(ep => {
+                if (!state.epochScores[ep]) {
+                    state.epochScores[ep] = { choice: 0, type: 0 };
+                }
+            });
+        }
+
+        if (state.scoreSort === undefined) state.scoreSort = 0;
+        if (state.scoreTypeEpochs === undefined) state.scoreTypeEpochs = 0;
+        if (state.currentIdBrowse === undefined) state.currentIdBrowse = 0;
+    }
+
+    function initNewTimelineQueues() {
+        state.queueTimelineChoice = epochs.slice();
+        shuffle(state.queueTimelineChoice);
+        state.timelineChoiceEpoch = null;
+        state.timelineStep = 0;
+        state.timelineChoiceCorrectAnswers = [];
+
+        state.queueTimelineType = epochs.slice();
+        shuffle(state.queueTimelineType);
+        state.timelineTypeEpoch = null;
+    }
+
     function saveProgress() {
         try {
-            localStorage.setItem('matura_trainer_state_v1', JSON.stringify(state));
+            localStorage.setItem('matura_trainer_state_v4', JSON.stringify(state));
         } catch (e) {
             console.error("Nie udało się zapisać postępu (LocalStorage):", e);
         }
@@ -557,21 +977,125 @@
             title: b.title,
             author: b.author,
             epoch: b.epoch,
-            score: 0
+            scoreButtons: 0,
+            scoreTyping: 0,
+            scoreRecall: 0
         }));
-        state.queue = state.books.map(b => b.id);
-        shuffle(state.queue);
-        state.currentId = null;
+        state.queueButtons = state.books.map(b => b.id);
+        shuffle(state.queueButtons);
+        state.currentIdButtons = null;
+
+        state.queueTyping = state.books.map(b => b.id);
+        shuffle(state.queueTyping);
+        state.currentIdTyping = null;
+
+        state.queueRecall = epochs.slice();
+        shuffle(state.queueRecall);
+        state.currentEpochRecall = null;
+        state.lastRecalledBookId = null;
+        state.currentIdBrowse = 0;
+        
+        currentRecallSession = [];
+        sortedState = Array(10).fill(null);
+        typedEpochsState = Array(10).fill("");
+
+        initNewTimelineQueues();
+
+        state.epochScores = {};
+        epochs.forEach(ep => {
+            state.epochScores[ep] = { choice: 0, type: 0 };
+        });
+        state.scoreSort = 0;
+        state.scoreTypeEpochs = 0;
+
+        state.mode = 'browse';
         saveProgress();
     }
 
     function confirmReset() {
-        if (confirm("Czy na pewno chcesz usunąć cały swój postęp i zacząć naukę od nowa?")) {
+        if (confirm("Czy na pewno chcesz usunąć cały swój postęp we WSZYSTKICH trybach i zacząć naukę od nowa?")) {
             resetProgress();
             document.getElementById('finish-card').classList.add('hidden');
             document.getElementById('quiz-card').classList.remove('hidden');
-            nextQuestion();
+            setMode('browse');
         }
+    }
+
+    function setMode(mode) {
+        state.mode = mode;
+        
+        // Selektory klas active
+        document.getElementById('mode-btn-browse').classList.toggle('active', mode === 'browse');
+        document.getElementById('mode-btn-buttons').classList.toggle('active', mode === 'buttons');
+        document.getElementById('mode-btn-typing').classList.toggle('active', mode === 'typing');
+        document.getElementById('mode-btn-recall').classList.toggle('active', mode === 'recall');
+        document.getElementById('mode-btn-sort').classList.toggle('active', mode === 'sort');
+        document.getElementById('mode-btn-type-epochs').classList.toggle('active', mode === 'type-epochs');
+        document.getElementById('mode-btn-timeline-choice').classList.toggle('active', mode === 'timeline-choice');
+        document.getElementById('mode-btn-timeline-type').classList.toggle('active', mode === 'timeline-type');
+
+        // Ukrycie wszystkich kontenerów
+        document.getElementById('browse-container').classList.add('hidden');
+        document.getElementById('epochs-buttons').classList.add('hidden');
+        document.getElementById('typing-container').classList.add('hidden');
+        document.getElementById('recall-container').classList.add('hidden');
+        document.getElementById('sort-container').classList.add('hidden');
+        document.getElementById('type-epochs-container').classList.add('hidden');
+        document.getElementById('timeline-choice-container').classList.add('hidden');
+        document.getElementById('timeline-type-container').classList.add('hidden');
+
+        if (mode === 'browse') {
+            document.getElementById('browse-container').classList.remove('hidden');
+        } else if (mode === 'buttons') {
+            document.getElementById('epochs-buttons').classList.remove('hidden');
+        } else if (mode === 'typing') {
+            document.getElementById('typing-container').classList.remove('hidden');
+        } else if (mode === 'recall') {
+            document.getElementById('recall-container').classList.remove('hidden');
+        } else if (mode === 'sort') {
+            document.getElementById('sort-container').classList.remove('hidden');
+        } else if (mode === 'type-epochs') {
+            document.getElementById('type-epochs-container').classList.remove('hidden');
+        } else if (mode === 'timeline-choice') {
+            document.getElementById('timeline-choice-container').classList.remove('hidden');
+        } else if (mode === 'timeline-type') {
+            document.getElementById('timeline-type-container').classList.remove('hidden');
+        }
+
+        document.getElementById('feedback-area').style.display = 'none';
+        saveProgress();
+        nextQuestion();
+    }
+
+    function getActiveQueue() {
+        return state.mode === 'buttons' ? state.queueButtons : state.queueTyping;
+    }
+
+    function setActiveQueue(newQueue) {
+        if (state.mode === 'buttons') state.queueButtons = newQueue;
+        else state.queueTyping = newQueue;
+    }
+
+    function getActiveCurrentId() {
+        return state.mode === 'buttons' ? state.currentIdButtons : state.currentIdTyping;
+    }
+
+    function setActiveCurrentId(id) {
+        if (state.mode === 'buttons') state.currentIdButtons = id;
+        else state.currentIdTyping = id;
+    }
+
+    function getBookScore(book) {
+        if (state.mode === 'buttons') return book.scoreButtons;
+        if (state.mode === 'typing') return book.scoreTyping;
+        if (state.mode === 'recall') return book.scoreRecall;
+        return 0;
+    }
+
+    function setBookScore(book, score) {
+        if (state.mode === 'buttons') book.scoreButtons = score;
+        else if (state.mode === 'typing') book.scoreTyping = score;
+        else if (state.mode === 'recall') book.scoreRecall = score;
     }
 
     function shuffle(array) {
@@ -593,21 +1117,102 @@
         });
     }
 
+    // Aktualizacja pasków postępu (obsługuje dynamicznie wszystkie 8 trybów)
     function updateProgressBar() {
-        const total = state.books.length;
-        const learned = state.books.filter(b => b.score >= 2).length;
-        const almostLearned = state.books.filter(b => b.score === 1).length;
+        const totalBooks = state.books.length;
+        const totalEpochs = epochs.length;
 
-        const percentageLearned = total > 0 ? Math.round((learned / total) * 100) : 0;
-        const percentageAlmost = total > 0 ? Math.round((almostLearned / total) * 100) : 0;
+        const mainLabel = document.getElementById('progress-label-main');
+        const almostLabel = document.getElementById('progress-label-almost');
 
-        // Aktualizacja pierwszego paska (Opanowane)
-        document.getElementById('progress-text').innerText = `${learned} z ${total} (${percentageLearned}%)`;
-        document.getElementById('progress-bar').style.width = percentageLearned + '%';
+        // TRYBY MINI-GIER OSI CZASU (SORTOWANIE / PISANIE EPOK)
+        if (state.mode === 'sort' || state.mode === 'type-epochs') {
+            mainLabel.innerText = "Ukończone gry (2/2):";
+            almostLabel.innerText = "Próg opanowania osi:";
 
-        // Aktualizacja drugiego paska (Bliskie opanowania)
-        document.getElementById('progress-almost-text').innerText = `${almostLearned} z ${total} (${percentageAlmost}%)`;
-        document.getElementById('progress-bar-almost').style.width = percentageAlmost + '%';
+            const score = state.mode === 'sort' ? state.scoreSort : state.scoreTypeEpochs;
+            const percentageLearned = score >= 2 ? 100 : (score === 1 ? 50 : 0);
+
+            document.getElementById('progress-text').innerText = `${score} z 2 gier (${percentageLearned}%)`;
+            document.getElementById('progress-bar').style.width = percentageLearned + '%';
+
+            document.getElementById('progress-almost-text').innerText = "Zalicz 2 bezbłędne gry z rzędu";
+            document.getElementById('progress-bar-almost').style.width = '100%';
+        } 
+        // TRYBY 6 I 7: RAMY CZASOWE I WYDARZENIA (WYBÓR ORAZ PISANIE)
+        else if (state.mode === 'timeline-choice' || state.mode === 'timeline-type') {
+            mainLabel.innerText = "Opanowane ramy (2/2):";
+            almostLabel.innerText = "Ramy w trakcie (1/2):";
+
+            let completedEpochsCount = 0;
+            let almostEpochsCount = 0;
+
+            epochs.forEach(epoch => {
+                const scoreObj = state.epochScores[epoch] || { choice: 0, type: 0 };
+                const score = state.mode === 'timeline-choice' ? scoreObj.choice : scoreObj.type;
+                if (score >= 2) {
+                    completedEpochsCount++;
+                } else if (score === 1) {
+                    almostEpochsCount++;
+                }
+            });
+
+            const percentageLearned = totalEpochs > 0 ? Math.round((completedEpochsCount / totalEpochs) * 100) : 0;
+            const percentageAlmost = totalEpochs > 0 ? Math.round((almostEpochsCount / totalEpochs) * 100) : 0;
+
+            document.getElementById('progress-text').innerText = `${completedEpochsCount} z ${totalEpochs} epok (${percentageLearned}%)`;
+            document.getElementById('progress-bar').style.width = percentageLearned + '%';
+
+            document.getElementById('progress-almost-text').innerText = `${almostEpochsCount} z ${totalEpochs} epok (${percentageAlmost}%)`;
+            document.getElementById('progress-bar-almost').style.width = percentageAlmost + '%';
+        }
+        // TRYB 3: POSTĘP EPOKOWY
+        else if (state.mode === 'recall') {
+            mainLabel.innerText = "Opanowane epoki (2/2):";
+            almostLabel.innerText = "Rozpoczęte epoki (1/2):";
+
+            let completedEpochsCount = 0;
+            let almostEpochsCount = 0;
+
+            epochs.forEach(epoch => {
+                const epochBooks = state.books.filter(b => b.epoch === epoch);
+                const allDone = epochBooks.every(b => b.scoreRecall >= 2);
+                if (allDone) {
+                    completedEpochsCount++;
+                } else {
+                    const anyStarted = epochBooks.some(b => b.scoreRecall >= 1);
+                    if (anyStarted) {
+                        almostEpochsCount++;
+                    }
+                }
+            });
+
+            const percentageLearned = totalEpochs > 0 ? Math.round((completedEpochsCount / totalEpochs) * 100) : 0;
+            const percentageAlmost = totalEpochs > 0 ? Math.round((almostEpochsCount / totalEpochs) * 100) : 0;
+
+            document.getElementById('progress-text').innerText = `${completedEpochsCount} z ${totalEpochs} (${percentageLearned}%)`;
+            document.getElementById('progress-bar').style.width = percentageLearned + '%';
+
+            document.getElementById('progress-almost-text').innerText = `${almostEpochsCount} z ${totalEpochs} (${percentageAlmost}%)`;
+            document.getElementById('progress-bar-almost').style.width = percentageAlmost + '%';
+        } 
+        // TRYBY 1, 2 i 0: POSTĘP LEKTUROWY (0/48)
+        else {
+            mainLabel.innerText = "Opanowane lektury (2/2):";
+            almostLabel.innerText = "Bliskie opanowania (1/2):";
+
+            const learned = state.books.filter(b => (state.mode === 'browse' ? b.scoreButtons : getBookScore(b)) >= 2).length;
+            const almostLearned = state.books.filter(b => (state.mode === 'browse' ? b.scoreButtons : getBookScore(b)) === 1).length;
+
+            const percentageLearned = totalBooks > 0 ? Math.round((learned / totalBooks) * 100) : 0;
+            const percentageAlmost = totalBooks > 0 ? Math.round((almostLearned / totalBooks) * 100) : 0;
+
+            document.getElementById('progress-text').innerText = `${learned} z ${totalBooks} (${percentageLearned}%)`;
+            document.getElementById('progress-bar').style.width = percentageLearned + '%';
+
+            document.getElementById('progress-almost-text').innerText = `${almostLearned} z ${totalBooks} (${percentageAlmost}%)`;
+            document.getElementById('progress-bar-almost').style.width = percentageAlmost + '%';
+        }
 
         if (!document.getElementById('full-list-container').classList.contains('hidden')) {
             renderFullList();
@@ -617,26 +1222,164 @@
     function nextQuestion() {
         document.getElementById('feedback-area').style.display = 'none';
 
-        if (state.currentId !== null && state.books[state.currentId].score >= 2) {
-            state.currentId = null;
+        // TRYBY 6 I 7: GRY O RAMACH CZASOWYCH I WYDARZENIACH (WYBÓR ORAZ PISANIE)
+        if (state.mode === 'timeline-choice') {
+            document.getElementById('book-title').classList.add('hidden');
+            document.getElementById('book-author').classList.add('hidden');
+            
+            const learnedStatusEl = document.querySelector('.learned-status');
+            learnedStatusEl.innerHTML = `<span class="card-label" style="font-weight:700; color:var(--primary);">Trening dat i wydarzeń</span>`;
+            
+            initTimelineChoiceQuestion();
+            return;
         }
 
-        if (state.currentId === null) {
-            if (state.queue.length === 0) {
+        if (state.mode === 'timeline-type') {
+            document.getElementById('book-title').classList.add('hidden');
+            document.getElementById('book-author').classList.add('hidden');
+            
+            const learnedStatusEl = document.querySelector('.learned-status');
+            learnedStatusEl.innerHTML = `<span class="card-label" style="font-weight:700; color:var(--primary);">Trening dat i wydarzeń</span>`;
+            
+            initTimelineTypeQuestion();
+            return;
+        }
+
+        // OBSŁUGA MINI-GIER CHRONOLOGICZNYCH (SORTOWANIE I WPISYWANIE EPOK)
+        if (state.mode === 'sort' || state.mode === 'type-epochs') {
+            document.getElementById('book-title').classList.add('hidden');
+            document.getElementById('book-author').classList.add('hidden');
+            
+            const learnedStatusEl = document.querySelector('.learned-status');
+            learnedStatusEl.innerHTML = `<span class="card-label" style="font-weight:700; color:var(--primary);">Trening chronologii epok</span>`;
+            
+            if (state.mode === 'sort') {
+                initSortGame();
+            } else {
+                initTypeEpochsGame();
+            }
+            return;
+        }
+
+        // TRYB 0: PRZEGLĄDANIE (FISZKI)
+        if (state.mode === 'browse') {
+            document.getElementById('book-title').classList.remove('hidden');
+            document.getElementById('book-author').classList.remove('hidden');
+
+            if (state.currentIdBrowse === undefined || state.currentIdBrowse === null) {
+                state.currentIdBrowse = 0;
+            }
+
+            const book = state.books[state.currentIdBrowse];
+
+            document.getElementById('book-title').innerText = book.title;
+            document.getElementById('book-author').innerText = book.author;
+            document.getElementById('browse-epoch-display').innerText = book.epoch;
+
+            const learnedStatusEl = document.querySelector('.learned-status');
+            learnedStatusEl.innerHTML = `<span class="card-label" style="font-weight:700; color:var(--primary);">Lektura ${state.currentIdBrowse + 1} z ${state.books.length}</span>`;
+
+            document.getElementById('prev-browse-btn').disabled = (state.currentIdBrowse === 0);
+            return;
+        }
+
+        // TRYB 3: WPISYWANIE LEKTURY (RECALL)
+        if (state.mode === 'recall') {
+            document.getElementById('book-title').classList.add('hidden');
+            document.getElementById('book-author').classList.add('hidden');
+
+            const learnedStatusEl = document.querySelector('.learned-status');
+
+            if (state.currentEpochRecall !== null) {
+                const uncompletedInEpoch = state.books.filter(b => b.epoch === state.currentEpochRecall && b.scoreRecall < 2);
+                if (uncompletedInEpoch.length === 0) {
+                    state.currentEpochRecall = null;
+                }
+            }
+
+            if (state.currentEpochRecall === null) {
+                state.queueRecall = state.queueRecall.filter(ep => 
+                    state.books.some(b => b.epoch === ep && b.scoreRecall < 2)
+                );
+
+                if (state.queueRecall.length === 0) {
+                    showFinishScreen();
+                    return;
+                }
+                state.currentEpochRecall = state.queueRecall.shift();
+                saveProgress();
+                
+                initRecallSession();
+            }
+
+            document.getElementById('recall-epoch-prompt').innerText = state.currentEpochRecall;
+
+            const epochBooks = state.books.filter(b => b.epoch === state.currentEpochRecall);
+            const needsInit = !currentRecallSession || 
+                              currentRecallSession.length !== epochBooks.length ||
+                              (currentRecallSession.length > 0 && state.books.find(b => b.id === currentRecallSession[0].bookId)?.epoch !== state.currentEpochRecall);
+            
+            if (needsInit) {
+                initRecallSession();
+            } else {
+                drawRecallRows();
+            }
+
+            const totalInEpoch = epochBooks.length;
+            const completedInEpoch = epochBooks.filter(b => b.scoreRecall >= 2).length;
+            learnedStatusEl.innerHTML = `<span class="card-label">Opanowane w tej epoce: ${completedInEpoch}/${totalInEpoch}</span>`;
+            
+            return;
+        }
+
+        // TRYBY 1 ORAZ 2 (WYBÓR I WPISYWANIE EPOKI)
+        document.getElementById('book-title').classList.remove('hidden');
+        document.getElementById('book-author').classList.remove('hidden');
+        
+        const learnedStatusEl = document.querySelector('.learned-status');
+        learnedStatusEl.innerHTML = `
+            <span class="card-label">Postęp lektury:</span>
+            <span id="dot-1" class="dot"></span>
+            <span id="dot-2" class="dot"></span>
+        `;
+
+        let currentId = getActiveCurrentId();
+        let queue = getActiveQueue();
+
+        if (currentId !== null) {
+            const book = state.books.find(b => b.id === currentId);
+            if (book && getBookScore(book) >= 2) {
+                currentId = null;
+                setActiveCurrentId(null);
+            }
+        }
+
+        if (currentId === null) {
+            if (queue.length === 0) {
                 showFinishScreen();
                 return;
             }
-            state.currentId = state.queue.shift();
+            currentId = queue.shift();
+            setActiveCurrentId(currentId);
             saveProgress();
         }
 
-        const book = state.books.find(b => b.id === state.currentId);
+        const book = state.books.find(b => b.id === currentId);
 
         document.getElementById('book-title').innerText = book.title;
         document.getElementById('book-author').innerText = book.author;
 
-        document.getElementById('dot-1').className = 'dot' + (book.score >= 1 ? ' active' : '');
-        document.getElementById('dot-2').className = 'dot' + (book.score >= 2 ? ' active' : '');
+        if (state.mode === 'typing') {
+            const input = document.getElementById('epoch-input');
+            input.value = '';
+            input.disabled = false;
+            document.getElementById('check-typed-btn').disabled = false;
+            setTimeout(() => input.focus(), 50);
+        }
+
+        const score = getBookScore(book);
+        document.getElementById('dot-1').className = 'dot' + (score >= 1 ? ' active' : '');
+        document.getElementById('dot-2').className = 'dot' + (score >= 2 ? ' active' : '');
 
         document.querySelectorAll('.epoch-btn').forEach(btn => {
             btn.disabled = false;
@@ -644,8 +1387,837 @@
         });
     }
 
+    // Obsługa przełączania w trybie przeglądania
+    function nextBrowseBook() {
+        if (state.currentIdBrowse < state.books.length - 1) {
+            state.currentIdBrowse++;
+        } else {
+            state.currentIdBrowse = 0;
+        }
+        saveProgress();
+        nextQuestion();
+    }
+
+    function prevBrowseBook() {
+        if (state.currentIdBrowse > 0) {
+            state.currentIdBrowse--;
+        }
+        saveProgress();
+        nextQuestion();
+    }
+
+    // LOGIKA MINI-GRY: SORTOWANIE EPOK
+    function initSortGame() {
+        sortedState = Array(10).fill(null);
+        sortPool = epochs.slice();
+        shuffle(sortPool);
+        drawSortGame();
+    }
+
+    function drawSortGame() {
+        const poolDiv = document.getElementById('sort-pool');
+        poolDiv.innerHTML = '';
+        sortPool.forEach(epoch => {
+            if (epoch !== null) {
+                const btn = document.createElement('button');
+                btn.className = 'epoch-btn';
+                btn.style.padding = '8px 12px';
+                btn.style.fontSize = '0.85rem';
+                btn.innerText = epoch;
+                btn.onclick = () => selectEpochForSort(epoch);
+                poolDiv.appendChild(btn);
+            }
+        });
+
+        const slotsDiv = document.getElementById('sort-slots');
+        slotsDiv.innerHTML = '';
+        sortedState.forEach((epoch, index) => {
+            const slot = document.createElement('div');
+            slot.style.display = 'flex';
+            slot.style.alignItems = 'center';
+            slot.style.padding = '10px';
+            slot.style.border = '1px solid var(--border)';
+            slot.style.borderRadius = '8px';
+            slot.style.backgroundColor = '#f8fafc';
+
+            const numSpan = document.createElement('span');
+            numSpan.style.fontWeight = '700';
+            numSpan.style.color = 'var(--text-muted)';
+            numSpan.style.marginRight = '12px';
+            numSpan.innerText = `${index + 1}.`;
+            slot.appendChild(numSpan);
+
+            const valueBtn = document.createElement('button');
+            valueBtn.style.flex = '1';
+            valueBtn.style.textAlign = 'left';
+            valueBtn.style.background = 'none';
+            valueBtn.style.border = 'none';
+            valueBtn.style.padding = '0';
+            valueBtn.style.cursor = 'pointer';
+            valueBtn.style.fontSize = '0.95rem';
+            valueBtn.style.fontWeight = '600';
+
+            if (epoch === null) {
+                valueBtn.style.color = '#cbd5e1';
+                valueBtn.innerText = 'Kliknij epokę z puli powyżej...';
+                valueBtn.disabled = true;
+            } else {
+                valueBtn.style.color = 'var(--primary)';
+                valueBtn.innerText = epoch;
+                valueBtn.onclick = () => removeEpochFromSort(index);
+            }
+
+            slot.appendChild(valueBtn);
+            slotsDiv.appendChild(slot);
+        });
+
+        document.getElementById('check-sort-btn').disabled = sortedState.includes(null);
+    }
+
+    function selectEpochForSort(epoch) {
+        const emptyIndex = sortedState.indexOf(null);
+        if (emptyIndex !== -1) {
+            sortedState[emptyIndex] = epoch;
+            const poolIndex = sortPool.indexOf(epoch);
+            if (poolIndex !== -1) {
+                sortPool.splice(poolIndex, 1);
+            }
+            drawSortGame();
+        }
+    }
+
+    function removeEpochFromSort(index) {
+        const epoch = sortedState[index];
+        if (epoch !== null) {
+            sortedState[index] = null;
+            sortPool.push(epoch);
+            drawSortGame();
+        }
+    }
+
+    function submitSortedEpochs() {
+        if (sortedState.includes(null)) return;
+
+        const slotsDiv = document.getElementById('sort-slots');
+        const slots = slotsDiv.children;
+
+        let allCorrect = true;
+
+        sortedState.forEach((epoch, index) => {
+            const correctEpoch = epochs[index];
+            const isCorrect = epoch === correctEpoch;
+            const slot = slots[index];
+
+            const valueBtn = slot.querySelector('button');
+            valueBtn.disabled = true;
+
+            if (isCorrect) {
+                slot.style.backgroundColor = '#ecfdf5';
+                slot.style.borderColor = '#a7f3d0';
+                valueBtn.style.color = 'var(--success)';
+
+                const badge = document.createElement('span');
+                badge.className = 'status-badge badge-done';
+                badge.style.marginLeft = 'auto';
+                badge.innerText = 'Dobrze';
+                slot.appendChild(badge);
+            } else {
+                allCorrect = false;
+                slot.style.backgroundColor = '#fef2f2';
+                slot.style.borderColor = '#fecaca';
+                valueBtn.style.color = 'var(--error)';
+
+                const badge = document.createElement('span');
+                badge.className = 'status-badge';
+                badge.style.backgroundColor = 'var(--error)';
+                badge.style.color = 'white';
+                badge.style.marginLeft = 'auto';
+                badge.innerText = `Źle (powinno być: ${correctEpoch})`;
+                slot.appendChild(badge);
+            }
+        });
+
+        if (allCorrect) {
+            state.scoreSort++;
+            alert(`Gratulacje! Wszystkie epoki są ułożone poprawnie w kolejności chronologicznej! (Postęp: ${state.scoreSort}/2)`);
+        } else {
+            state.scoreSort = 0;
+            alert("Niektóre epoki zostały ułożone błędnie. Licznik postępu gry spadł do 0.");
+        }
+        saveProgress();
+    }
+
+    // LOGIKA MINI-GRY: WPISYWANIE EPOK CHRONOLOGICZNIE
+    function initTypeEpochsGame() {
+        typedEpochsState = Array(10).fill("");
+        drawTypeEpochsGame();
+    }
+
+    function drawTypeEpochsGame() {
+        const slotsDiv = document.getElementById('type-epochs-slots');
+        slotsDiv.innerHTML = '';
+
+        typedEpochsState.forEach((val, index) => {
+            const slot = document.createElement('div');
+            slot.style.display = 'flex';
+            slot.style.alignItems = 'center';
+            slot.style.padding = '8px';
+            slot.style.border = '1px solid var(--border)';
+            slot.style.borderRadius = '8px';
+            slot.style.backgroundColor = '#f8fafc';
+
+            const numSpan = document.createElement('span');
+            numSpan.style.fontWeight = '700';
+            numSpan.style.color = 'var(--text-muted)';
+            numSpan.style.marginRight = '12px';
+            numSpan.style.minWidth = '20px';
+            numSpan.innerText = `${index + 1}.`;
+            slot.appendChild(numSpan);
+
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'recall-input';
+            input.id = `typed-epoch-${index}`;
+            input.placeholder = `Wpisz ${index + 1}. epokę...`;
+            input.value = val;
+            input.style.flex = '1';
+            input.onkeydown = (e) => { if (e.key === 'Enter') submitTypedEpochs(); };
+
+            slot.appendChild(input);
+            slotsDiv.appendChild(slot);
+        });
+    }
+
+    function submitTypedEpochs() {
+        const slotsDiv = document.getElementById('type-epochs-slots');
+        const slots = slotsDiv.children;
+
+        let allCorrect = true;
+
+        typedEpochsState.forEach((_, index) => {
+            const input = document.getElementById(`typed-epoch-${index}`);
+            const typedVal = input.value.trim();
+            typedEpochsState[index] = typedVal;
+
+            const correctEpoch = epochs[index];
+            const isCorrect = normalizeText(typedVal) === normalizeText(correctEpoch);
+
+            const slot = slots[index];
+            input.disabled = true;
+
+            if (isCorrect) {
+                slot.style.backgroundColor = '#ecfdf5';
+                slot.style.borderColor = '#a7f3d0';
+                input.style.color = 'var(--success)';
+                input.style.fontWeight = 'bold';
+
+                const badge = document.createElement('span');
+                badge.className = 'status-badge badge-done';
+                badge.style.marginLeft = 'auto';
+                badge.innerText = 'Dobrze';
+                slot.appendChild(badge);
+            } else {
+                allCorrect = false;
+                slot.style.backgroundColor = '#fef2f2';
+                slot.style.borderColor = '#fecaca';
+                input.style.color = 'var(--error)';
+
+                const badge = document.createElement('span');
+                badge.className = 'status-badge';
+                badge.style.backgroundColor = 'var(--error)';
+                badge.style.color = 'white';
+                badge.style.marginLeft = 'auto';
+                badge.innerText = `Źle (powinno być: ${correctEpoch})`;
+                slot.appendChild(badge);
+            }
+        });
+
+        if (allCorrect) {
+            state.scoreTypeEpochs++;
+            alert(`Wspaniale! Wszystkie nazwy epok wpisałeś poprawnie! (Postęp: ${state.scoreTypeEpochs}/2)`);
+        } else {
+            state.scoreTypeEpochs = 0;
+            alert("Niektóre nazwy są błędne lub ułożone w złej kolejności. Licznik postępu gry spadł do 0.");
+        }
+        saveProgress();
+    }
+
+    // LOGIKA MINI-GRY: RAMY CZASOWE I WYDARZENIA (WYBÓR)
+    function initTimelineChoiceQuestion() {
+        if (!state.timelineChoiceEpoch) {
+            // Filtrowanie kolejki do epok, które nie zostały jeszcze opanowane na 2 punkty w tym trybie
+            state.queueTimelineChoice = state.queueTimelineChoice.filter(ep => {
+                const sc = state.epochScores[ep] || { choice: 0 };
+                return sc.choice < 2;
+            });
+
+            if (state.queueTimelineChoice.length === 0) {
+                const unfinished = epochs.filter(ep => {
+                    const sc = state.epochScores[ep] || { choice: 0 };
+                    return sc.choice < 2;
+                });
+                if (unfinished.length > 0) {
+                    state.queueTimelineChoice = unfinished.slice();
+                    shuffle(state.queueTimelineChoice);
+                } else {
+                    showFinishScreen();
+                    return;
+                }
+            }
+            state.timelineChoiceEpoch = state.queueTimelineChoice.shift();
+            state.timelineStep = 0;
+            state.timelineChoiceCorrectAnswers = [];
+            saveProgress();
+        }
+
+        const epoch = state.timelineChoiceEpoch;
+        const step = state.timelineStep;
+        const details = timelineData[epoch];
+
+        document.getElementById('timeline-choice-epoch-title').innerText = epoch;
+
+        const qText = document.getElementById('timeline-choice-question-text');
+        const grid = document.getElementById('timeline-choice-options-grid');
+        const feedback = document.getElementById('timeline-choice-feedback');
+        const nextBtn = document.getElementById('next-timeline-choice-btn');
+
+        feedback.style.display = 'none';
+        nextBtn.classList.add('hidden');
+
+        let correctAnswer = "";
+        let distractorPool = [];
+
+        if (step === 0) {
+            qText.innerText = "Czym ROZPOCZĘŁA SIĘ ta epoka?";
+            correctAnswer = details.start;
+            distractorPool = Object.keys(timelineData)
+                .filter(k => k !== epoch)
+                .map(k => timelineData[k].start);
+        } else if (step === 1) {
+            qText.innerText = "Czym ZAKOŃCZYŁA SIĘ ta epoka?";
+            correctAnswer = details.end;
+            distractorPool = Object.keys(timelineData)
+                .filter(k => k !== epoch)
+                .map(k => timelineData[k].end);
+        } else {
+            qText.innerText = "Jakie były RAMY CZASOWE (lata trwania) tej epoki?";
+            correctAnswer = details.years;
+            distractorPool = Object.keys(timelineData)
+                .filter(k => k !== epoch)
+                .map(k => timelineData[k].years);
+        }
+
+        shuffle(distractorPool);
+        const options = [correctAnswer, distractorPool[0], distractorPool[1], distractorPool[2]];
+        shuffle(options);
+
+        grid.innerHTML = '';
+        options.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.className = 'epoch-btn';
+            btn.style.width = '100%';
+            btn.style.textAlign = 'left';
+            btn.style.fontSize = '0.9rem';
+            btn.innerText = opt;
+            btn.onclick = () => submitTimelineChoice(opt, btn, correctAnswer);
+            grid.appendChild(btn);
+        });
+    }
+
+    function submitTimelineChoice(selected, clickedBtn, correct) {
+        document.querySelectorAll('#timeline-choice-options-grid .epoch-btn').forEach(btn => {
+            btn.disabled = true;
+            if (btn.innerText === correct) {
+                btn.classList.add('correct-choice');
+            }
+        });
+
+        const isCorrect = selected === correct;
+        if (!isCorrect) {
+            clickedBtn.classList.add('incorrect-choice');
+        }
+
+        // Zapisywanie wyniku w sesji ramy wyboru
+        state.timelineChoiceCorrectAnswers.push(isCorrect);
+
+        const feedback = document.getElementById('timeline-choice-feedback');
+        feedback.style.display = 'block';
+        feedback.className = 'feedback ' + (isCorrect ? 'is-correct' : 'is-incorrect');
+        
+        feedback.innerHTML = isCorrect 
+            ? `<strong>Dobrze!</strong> Poprawna odpowiedź.` 
+            : `<strong>Błąd!</strong> Prawidłowa odpowiedź to: <strong>${correct}</strong>.`;
+
+        document.getElementById('next-timeline-choice-btn').classList.remove('hidden');
+    }
+
+    function nextTimelineChoiceQuestion() {
+        if (state.timelineStep < 2) {
+            state.timelineStep++;
+            saveProgress();
+            nextQuestion();
+        } else {
+            // Koniec 3 pytań dla danej epoki
+            const epoch = state.timelineChoiceEpoch;
+            const allCorrect = state.timelineChoiceCorrectAnswers.every(ans => ans === true);
+
+            if (allCorrect) {
+                state.epochScores[epoch].choice++;
+                if (state.epochScores[epoch].choice < 2) {
+                    insertBackIntoQueueTimelineChoice(epoch, true);
+                }
+                alert(`Brawo! Zaliczyłeś bezbłędnie całą epokę: ${epoch} (Postęp: ${state.epochScores[epoch].choice}/2).`);
+            } else {
+                state.epochScores[epoch].choice = 0;
+                insertBackIntoQueueTimelineChoice(epoch, false);
+                alert(`Niestety, popełniłeś błędy w epoce: ${epoch}. Jej licznik postępu spadł do 0.`);
+            }
+
+            state.timelineChoiceEpoch = null;
+            state.timelineStep = 0;
+            state.timelineChoiceCorrectAnswers = [];
+            saveProgress();
+            nextQuestion();
+        }
+    }
+
+    function insertBackIntoQueueTimelineChoice(epoch, isCorrect) {
+        if (state.queueTimelineChoice.length === 0) {
+            state.queueTimelineChoice.push(epoch);
+            return;
+        }
+        let minGap = isCorrect ? 3 : 1;
+        let targetIndex;
+        if (state.queueTimelineChoice.length <= minGap) {
+            targetIndex = state.queueTimelineChoice.length;
+        } else {
+            targetIndex = Math.floor(Math.random() * (state.queueTimelineChoice.length - minGap + 1)) + minGap;
+        }
+        state.queueTimelineChoice.splice(targetIndex, 0, epoch);
+    }
+
+    // LOGIKA MINI-GRY: RAMY CZASOWE I WYDARZENIA (PISANIE)
+    function initTimelineTypeQuestion() {
+        if (!state.timelineTypeEpoch) {
+            // Filtrowanie kolejki ramy pisanie
+            state.queueTimelineType = state.queueTimelineType.filter(ep => {
+                const sc = state.epochScores[ep] || { type: 0 };
+                return sc.type < 2;
+            });
+
+            if (state.queueTimelineType.length === 0) {
+                const unfinished = epochs.filter(ep => {
+                    const sc = state.epochScores[ep] || { type: 0 };
+                    return sc.type < 2;
+                });
+                if (unfinished.length > 0) {
+                    state.queueTimelineType = unfinished.slice();
+                    shuffle(state.queueTimelineType);
+                } else {
+                    showFinishScreen();
+                    return;
+                }
+            }
+            state.timelineTypeEpoch = state.queueTimelineType.shift();
+            saveProgress();
+        }
+
+        const epoch = state.timelineTypeEpoch;
+        document.getElementById('timeline-type-epoch-title').innerText = epoch;
+
+        const inputStart = document.getElementById('tl-type-input-start');
+        const inputEnd = document.getElementById('tl-type-input-end');
+        const inputYears = document.getElementById('tl-type-input-years');
+
+        inputStart.value = '';
+        inputEnd.value = '';
+        inputYears.value = '';
+
+        inputStart.disabled = false;
+        inputEnd.disabled = false;
+        inputYears.disabled = false;
+
+        inputStart.style.borderColor = 'var(--border)';
+        inputStart.style.color = 'var(--text-main)';
+        inputEnd.style.borderColor = 'var(--border)';
+        inputEnd.style.color = 'var(--text-main)';
+        inputYears.style.borderColor = 'var(--border)';
+        inputYears.style.color = 'var(--text-main)';
+
+        document.querySelectorAll('.tl-correct-answer').forEach(div => {
+            div.classList.add('hidden');
+            div.innerHTML = '';
+        });
+
+        document.getElementById('timeline-type-feedback').style.display = 'none';
+        document.getElementById('check-timeline-type-btn').classList.remove('hidden');
+        document.getElementById('next-timeline-type-btn').classList.add('hidden');
+        document.getElementById('skip-timeline-type-btn').classList.remove('hidden');
+    }
+
+    function submitTimelineType() {
+        const epoch = state.timelineTypeEpoch;
+        const details = timelineData[epoch];
+
+        const inputStart = document.getElementById('tl-type-input-start');
+        const inputEnd = document.getElementById('tl-type-input-end');
+        const inputYears = document.getElementById('tl-type-input-years');
+
+        const valStart = inputStart.value.trim();
+        const valEnd = inputEnd.value.trim();
+        const valYears = inputYears.value.trim();
+
+        if (!valStart || !valEnd || !valYears) {
+            alert("Wypełnij wszystkie trzy pola przed sprawdzeniem!");
+            return;
+        }
+
+        inputStart.disabled = true;
+        inputEnd.disabled = true;
+        inputYears.disabled = true;
+
+        const isStartCorrect = checkAnswerKeywords(valStart, details.startKeywords);
+        const isEndCorrect = checkAnswerKeywords(valEnd, details.endKeywords);
+        const isYearsCorrect = checkAnswerKeywords(valYears, details.yearsKeywords);
+
+        showTimelineTypeResult('start', isStartCorrect, details.start);
+        showTimelineTypeResult('end', isEndCorrect, details.end);
+        showTimelineTypeResult('years', isYearsCorrect, details.years);
+
+        let correctCount = (isStartCorrect ? 1 : 0) + (isEndCorrect ? 1 : 0) + (isYearsCorrect ? 1 : 0);
+
+        // Zapisywanie postępu i karanie błędu
+        if (correctCount === 3) {
+            state.epochScores[epoch].type++;
+            if (state.epochScores[epoch].type < 2) {
+                insertBackIntoQueueTimelineType(epoch, true);
+            }
+        } else {
+            state.epochScores[epoch].type = 0;
+            insertBackIntoQueueTimelineType(epoch, false);
+        }
+
+        const feedback = document.getElementById('timeline-type-feedback');
+        feedback.style.display = 'block';
+        feedback.className = 'feedback ' + (correctCount === 3 ? 'is-correct' : 'is-incorrect');
+        
+        if (correctCount === 3) {
+            feedback.innerHTML = `<strong>Wspaniale!</strong> Wszystkie 3 odpowiedzi są poprawne (Postęp: ${state.epochScores[epoch].type}/2).`;
+        } else {
+            feedback.innerHTML = `<strong>Wynik: ${correctCount}/3.</strong> Postęp zresetowany do 0. Przeanalizuj prawidłowe odpowiedzi poniżej pól.`;
+        }
+
+        document.getElementById('check-timeline-type-btn').classList.add('hidden');
+        document.getElementById('next-timeline-type-btn').classList.remove('hidden');
+        document.getElementById('skip-timeline-type-btn').classList.add('hidden');
+
+        saveProgress();
+    }
+
+    function insertBackIntoQueueTimelineType(epoch, isCorrect) {
+        if (state.queueTimelineType.length === 0) {
+            state.queueTimelineType.push(epoch);
+            return;
+        }
+        let minGap = isCorrect ? 3 : 1;
+        let targetIndex;
+        if (state.queueTimelineType.length <= minGap) {
+            targetIndex = state.queueTimelineType.length;
+        } else {
+            targetIndex = Math.floor(Math.random() * (state.queueTimelineType.length - minGap + 1)) + minGap;
+        }
+        state.queueTimelineType.splice(targetIndex, 0, epoch);
+    }
+
+    function showTimelineTypeResult(type, isCorrect, correctText) {
+        const input = document.getElementById(`tl-type-input-${type}`);
+        const div = document.querySelector(`#tl-type-row-${type} .tl-correct-answer`);
+        
+        div.classList.remove('hidden');
+        if (isCorrect) {
+            input.style.borderColor = 'var(--success)';
+            input.style.color = 'var(--success)';
+            div.style.color = 'var(--success)';
+            div.innerHTML = `✔️ Poprawnie!`;
+        } else {
+            input.style.borderColor = 'var(--error)';
+            input.style.color = 'var(--error)';
+            div.style.color = 'var(--error)';
+            div.innerHTML = `❌ Błąd. Prawidłowa odpowiedź: <strong>${correctText}</strong>`;
+        }
+    }
+
+    function checkAnswerKeywords(userText, keywords) {
+        const norm = normalizeText(userText);
+        return keywords.some(keyword => norm.includes(normalizeText(keyword)));
+    }
+
+    function nextTimelineTypeQuestion() {
+        state.timelineTypeEpoch = null;
+        saveProgress();
+        nextQuestion();
+    }
+
+    function skipTimelineType() {
+        if (state.mode !== 'timeline-type' || state.timelineTypeEpoch === null) return;
+        const epoch = state.timelineTypeEpoch;
+        state.timelineTypeEpoch = null;
+        insertBackIntoQueueTimelineType(epoch, false);
+        saveProgress();
+        nextQuestion();
+    }
+
+    // Inicjalizacja tablicy dla aktualnie otwartej epoki (tryb lektur recall)
+    function initRecallSession() {
+        const epochBooks = state.books.filter(b => b.epoch === state.currentEpochRecall);
+        
+        currentRecallSession = epochBooks.map(b => {
+            if (b.scoreRecall >= 2) {
+                return {
+                    bookId: b.id,
+                    title: b.title,
+                    author: b.author,
+                    status: 'completed',
+                    error: ''
+                };
+            } else {
+                return {
+                    bookId: null,
+                    title: '',
+                    author: '',
+                    status: 'empty',
+                    error: ''
+                };
+            }
+        });
+
+        currentRecallSession.sort((a, b) => {
+            if (a.status === 'completed' && b.status !== 'completed') return -1;
+            if (a.status !== 'completed' && b.status === 'completed') return 1;
+            return 0;
+        });
+
+        drawRecallRows();
+    }
+
+    // Rysowanie rzędów formularza lektur
+    function drawRecallRows() {
+        const container = document.getElementById('recall-rows-container');
+        container.innerHTML = '';
+
+        currentRecallSession.forEach((row, index) => {
+            const rowDiv = document.createElement('div');
+            rowDiv.style.border = '1px solid var(--border)';
+            rowDiv.style.borderRadius = '8px';
+            rowDiv.style.padding = '12px';
+            rowDiv.style.backgroundColor = '#f8fafc';
+            rowDiv.style.transition = 'all 0.2s';
+            
+            if (row.status === 'completed') {
+                rowDiv.style.backgroundColor = '#ecfdf5';
+                rowDiv.style.borderColor = '#a7f3d0';
+            } else if (row.status === 'matched') {
+                rowDiv.style.backgroundColor = '#fffbeb';
+                rowDiv.style.borderColor = '#fde68a';
+            } else if (row.status === 'incorrect') {
+                rowDiv.style.backgroundColor = '#fef2f2';
+                rowDiv.style.borderColor = '#fecaca';
+            }
+
+            let badgeHtml = '';
+            if (row.status === 'completed') {
+                badgeHtml = '<span class="status-badge badge-done" style="margin-left: auto;">Umiem</span>';
+            } else if (row.status === 'matched') {
+                badgeHtml = '<span class="status-badge badge-half" style="margin-left: auto;">Zaliczone (1/2)</span>';
+            } else if (row.status === 'incorrect') {
+                badgeHtml = '<span class="status-badge" style="background-color: var(--error); color: white; margin-left: auto; font-size: 0.75rem;">Błąd</span>';
+            }
+
+            const headerDiv = document.createElement('div');
+            headerDiv.style.display = 'flex';
+            headerDiv.style.justifyContent = 'space-between';
+            headerDiv.style.marginBottom = '8px';
+            headerDiv.innerHTML = `<span style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted);">LEKTURA ${index + 1}</span> ${badgeHtml}`;
+            rowDiv.appendChild(headerDiv);
+
+            const inputsDiv = document.createElement('div');
+            inputsDiv.style.display = 'flex';
+            inputsDiv.style.flexDirection = 'column';
+            inputsDiv.style.gap = '8px';
+
+            const titleInput = document.createElement('input');
+            titleInput.type = 'text';
+            titleInput.className = 'recall-input';
+            titleInput.id = `recall-title-${index}`;
+            titleInput.placeholder = 'Wpisz tytuł lektury...';
+            titleInput.value = row.title;
+            titleInput.disabled = (row.status === 'completed' || row.status === 'matched');
+            titleInput.onkeydown = (e) => { if (e.key === 'Enter') submitRecallAnswers(); };
+
+            const authorInput = document.createElement('input');
+            authorInput.type = 'text';
+            authorInput.className = 'recall-input';
+            authorInput.id = `recall-author-${index}`;
+            authorInput.placeholder = 'Wpisz autora lektury...';
+            authorInput.value = row.author;
+            authorInput.disabled = (row.status === 'completed' || row.status === 'matched');
+            authorInput.onkeydown = (e) => { if (e.key === 'Enter') submitRecallAnswers(); };
+
+            inputsDiv.appendChild(titleInput);
+            inputsDiv.appendChild(authorInput);
+            rowDiv.appendChild(inputsDiv);
+
+            if (row.status === 'incorrect' && row.error) {
+                const errDiv = document.createElement('div');
+                errDiv.style.marginTop = '8px';
+                errDiv.style.fontSize = '0.8rem';
+                errDiv.style.color = 'var(--error)';
+                errDiv.style.fontWeight = '500';
+                errDiv.innerHTML = row.error;
+                rowDiv.appendChild(errDiv);
+            }
+
+            container.appendChild(rowDiv);
+        });
+
+        const allDone = currentRecallSession.every(r => r.status === 'completed' || r.status === 'matched');
+        if (allDone) {
+            document.getElementById('next-epoch-btn').classList.remove('hidden');
+            document.getElementById('check-recall-btn').classList.add('hidden');
+            document.getElementById('skip-epoch-btn').classList.add('hidden');
+        } else {
+            document.getElementById('next-epoch-btn').classList.add('hidden');
+            document.getElementById('check-recall-btn').classList.remove('hidden');
+            document.getElementById('skip-epoch-btn').classList.remove('hidden');
+        }
+    }
+
+    // Walidacja i sprawdzanie wszystkich wpisanych pól lektur na raz
+    function submitRecallAnswers() {
+        currentRecallSession.forEach((row, index) => {
+            if (row.status === 'empty' || row.status === 'incorrect') {
+                row.title = document.getElementById(`recall-title-${index}`).value.trim();
+                row.author = document.getElementById(`recall-author-${index}`).value.trim();
+            }
+        });
+
+        let uncompletedBooks = state.books.filter(b => 
+            b.epoch === state.currentEpochRecall && 
+            b.scoreRecall < 2 &&
+            !currentRecallSession.some(r => r.bookId === b.id && r.status === 'matched')
+        );
+
+        currentRecallSession.forEach(row => {
+            if (row.status === 'incorrect') {
+                row.status = 'empty';
+                row.error = '';
+            }
+        });
+
+        currentRecallSession.forEach(row => {
+            if (row.status !== 'empty') return;
+            if (!row.title && !row.author) return;
+
+            const normTitle = normalizeText(row.title);
+            const normAuthor = normalizeText(row.author);
+
+            const matchIndex = uncompletedBooks.findIndex(b => 
+                normalizeText(b.title) === normTitle && 
+                normalizeText(b.author) === normAuthor
+            );
+
+            if (matchIndex !== -1) {
+                const matchedBook = uncompletedBooks[matchIndex];
+                matchedBook.scoreRecall++;
+
+                row.bookId = matchedBook.id;
+                row.title = matchedBook.title;
+                row.author = matchedBook.author;
+
+                if (matchedBook.scoreRecall >= 2) {
+                    row.status = 'completed';
+                } else {
+                    row.status = 'matched';
+                }
+
+                uncompletedBooks.splice(matchIndex, 1);
+            } else {
+                const titleMatch = uncompletedBooks.find(b => normalizeText(b.title) === normTitle);
+                const authorMatch = uncompletedBooks.find(b => normalizeText(b.author) === normAuthor);
+
+                row.status = 'incorrect';
+
+                if (titleMatch) {
+                    titleMatch.scoreRecall = 0;
+                    row.error = `Tytuł poprawny dla tej epoki, ale podany autor jest błędny! Prawidłowy autor to: <strong>${titleMatch.author}</strong>. Postęp lektury spadł do 0.`;
+                } else if (authorMatch) {
+                    row.error = `Autor <strong>${authorMatch.author}</strong> napisał lekturę w tej epoce, ale podany tytuł jest błędny.`;
+                } else {
+                    row.error = `Niepoprawny tytuł lub autor lektury dla tej epoki.`;
+                }
+            }
+        });
+
+        saveProgress();
+        drawRecallRows();
+    }
+
+    function nextRecallEpoch() {
+        state.currentEpochRecall = null;
+        currentRecallSession = [];
+        saveProgress();
+        nextQuestion();
+    }
+
+    function skipRecallEpoch() {
+        if (state.mode !== 'recall' || state.currentEpochRecall === null) return;
+        
+        const epoch = state.currentEpochRecall;
+        state.currentEpochRecall = null;
+        currentRecallSession = [];
+        insertBackIntoQueueRecall(epoch, false);
+        saveProgress();
+        nextQuestion();
+    }
+
+    function insertBackIntoQueueRecall(epoch, isCorrect) {
+        if (state.queueRecall.length === 0) {
+            state.queueRecall.push(epoch);
+            return;
+        }
+
+        let minGap = isCorrect ? 3 : 1;
+        let targetIndex;
+
+        if (state.queueRecall.length <= minGap) {
+            targetIndex = state.queueRecall.length;
+        } else {
+            targetIndex = Math.floor(Math.random() * (state.queueRecall.length - minGap + 1)) + minGap;
+        }
+
+        state.queueRecall.splice(targetIndex, 0, epoch);
+    }
+
+    function normalizeText(text) {
+        if (!text) return "";
+        return text.toLowerCase()
+            .trim()
+            .replace(/ą/g, 'a')
+            .replace(/ć/g, 'c')
+            .replace(/ę/g, 'e')
+            .replace(/ł/g, 'l')
+            .replace(/ń/g, 'n')
+            .replace(/ó/g, 'o')
+            .replace(/ś/g, 's')
+            .replace(/ź/g, 'z')
+            .replace(/ż/g, 'z')
+            .replace(/[-\s]+/g, '');
+    }
+
+    // Sprawdzanie trybu przyciskowego
     function submitAnswer(selectedEpoch, clickedButton) {
-        const book = state.books.find(b => b.id === state.currentId);
+        const currentId = getActiveCurrentId();
+        const book = state.books.find(b => b.id === currentId);
         const isCorrect = book.epoch === selectedEpoch;
 
         document.querySelectorAll('.epoch-btn').forEach(btn => {
@@ -655,62 +2227,107 @@
             }
         });
 
-        if (!isCorrect) {
+        if (!isCorrect && clickedButton) {
             clickedButton.classList.add('incorrect-choice');
         }
 
+        processAnswerResult(isCorrect, book, selectedEpoch);
+    }
+
+    // Sprawdzanie trybu wpisywania epoki
+    function submitTypedAnswer() {
+        const input = document.getElementById('epoch-input');
+        const userValue = input.value.trim();
+        if (!userValue) return;
+
+        const currentId = getActiveCurrentId();
+        const book = state.books.find(b => b.id === currentId);
+
+        const isCorrect = normalizeText(userValue) === normalizeText(book.epoch);
+
+        input.disabled = true;
+        document.getElementById('check-typed-btn').disabled = true;
+
+        processAnswerResult(isCorrect, book, userValue);
+    }
+
+    // Wspólny procesor wyniku dla trybów 1 i 2
+    function processAnswerResult(isCorrect, book, userText) {
         const feedbackArea = document.getElementById('feedback-area');
         const feedbackTitle = document.getElementById('feedback-title');
         const feedbackText = document.getElementById('feedback-text');
 
         feedbackArea.style.display = 'block';
 
+        let score = getBookScore(book);
+
         if (isCorrect) {
-            book.score++;
+            score++;
+            setBookScore(book, score);
             feedbackArea.className = 'feedback is-correct';
             feedbackTitle.innerText = "Dobrze! 👍";
             
-            if (book.score >= 2) {
-                feedbackText.innerText = `Prawidłowa odpowiedź. "${book.title}" to ${book.epoch}. Książka została trwale opanowana!`;
-                state.currentId = null; 
+            if (score >= 2) {
+                feedbackText.innerText = `Prawidłowa odpowiedź! "${book.title}" to ${book.epoch}. Książka została trwale opanowana w tym trybie!`;
+                setActiveCurrentId(null); 
             } else {
-                feedbackText.innerText = `Poprawnie! To pierwsza dobra odpowiedź z rzędu. Potrzebujesz jeszcze jednej, by uznać tę lekturę za opanowaną.`;
+                feedbackText.innerText = `Poprawnie! To pierwsza dobra odpowiedź z rzędu w tym trybie. Potrzebujesz jeszcze jednej, by ją opanować.`;
                 insertBackIntoQueue(book.id, true);
-                state.currentId = null;
+                setActiveCurrentId(null);
             }
         } else {
-            book.score = 0; 
+            setBookScore(book, 0); 
             feedbackArea.className = 'feedback is-incorrect';
             feedbackTitle.innerText = "Źle! ❌";
-            feedbackText.innerHTML = `Niestety. "${book.title}" (autor: ${book.author}) reprezentuje epokę: <strong>${book.epoch}</strong>.<br>Licznik postępu tej lektury spadł do 0. Książka powróci do Ciebie za jakiś czas.`;
+            
+            let extraFeedback = '';
+            if (state.mode === 'typing') {
+                extraFeedback = `Twoja odpowiedź: "${userText}".<br>`;
+            }
+
+            feedbackText.innerHTML = `Niestety. "${book.title}" (autor: ${book.author}) reprezentuje epokę: <strong>${book.epoch}</strong>.<br>${extraFeedback}Licznik postępu tej lektury w tym trybie spadł do 0. Książka powróci do Ciebie za jakiś czas.`;
             
             insertBackIntoQueue(book.id, false);
-            state.currentId = null;
+            setActiveCurrentId(null);
         }
 
         saveProgress();
     }
 
     function insertBackIntoQueue(id, isCorrect) {
-        if (state.queue.length === 0) {
-            state.queue.push(id);
+        let queue = getActiveQueue();
+        if (queue.length === 0) {
+            queue.push(id);
             return;
         }
 
         let minGap = isCorrect ? 6 : 3;
         let targetIndex;
 
-        if (state.queue.length <= minGap) {
-            targetIndex = state.queue.length;
+        if (queue.length <= minGap) {
+            targetIndex = queue.length;
         } else {
-            targetIndex = Math.floor(Math.random() * (state.queue.length - minGap + 1)) + minGap;
+            targetIndex = Math.floor(Math.random() * (queue.length - minGap + 1)) + minGap;
         }
 
-        state.queue.splice(targetIndex, 0, id);
+        queue.splice(targetIndex, 0, id);
+        setActiveQueue(queue);
     }
 
     function handleNext() {
         nextQuestion();
+    }
+
+    function handleKeyPress(event) {
+        if (event.key === 'Enter') {
+            submitTypedAnswer();
+        }
+    }
+
+    function handleRecallKeyPress(event) {
+        if (event.key === 'Enter') {
+            submitRecallAnswers();
+        }
     }
 
     function showFinishScreen() {
@@ -734,6 +2351,20 @@
     function renderFullList() {
         const container = document.getElementById('full-list-container');
         container.innerHTML = '';
+
+        let activeModeText = "tryb wyboru";
+        if (state.mode === 'browse') activeModeText = "tryb przeglądania (fiszki)";
+        if (state.mode === 'typing') activeModeText = "tryb wpisywania epoki";
+        if (state.mode === 'recall') activeModeText = "tryb wpisywania lektury i autora";
+        if (state.mode === 'sort' || state.mode === 'type-epochs' || state.mode === 'timeline-choice' || state.mode === 'timeline-type') activeModeText = "trening osi czasu epok";
+        
+        const modeTitle = document.createElement('p');
+        modeTitle.style.fontWeight = '600';
+        modeTitle.style.fontSize = '0.9rem';
+        modeTitle.style.color = 'var(--text-muted)';
+        modeTitle.style.marginBottom = '16px';
+        modeTitle.innerText = `Poniższe postępy dotyczą aktualnie wybranego trybu (${activeModeText}):`;
+        container.appendChild(modeTitle);
 
         const grouped = {};
         epochs.forEach(epoch => {
@@ -760,10 +2391,12 @@
                 textSpan.innerHTML = `<strong>${book.title}</strong> – ${book.author}`;
 
                 const badge = document.createElement('span');
-                if (book.score === 0) {
+                
+                const score = (state.mode === 'browse' || state.mode === 'sort' || state.mode === 'type-epochs' || state.mode === 'timeline-choice' || state.mode === 'timeline-type' ? book.scoreButtons : getBookScore(book));
+                if (score === 0) {
                     badge.className = 'status-badge badge-none';
                     badge.innerText = '0/2';
-                } else if (book.score === 1) {
+                } else if (score === 1) {
                     badge.className = 'status-badge badge-half';
                     badge.innerText = '1/2';
                 } else {
